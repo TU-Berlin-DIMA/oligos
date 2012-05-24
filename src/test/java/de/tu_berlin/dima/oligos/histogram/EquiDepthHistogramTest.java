@@ -22,14 +22,4 @@ public class EquiDepthHistogramTest {
     assertTrue(hist.getNumBuckets() == NUM_BUCKETS);
   }
 
-  @Test
-  public void testGetLowerBoundAt() {
-    fail("Not yet implemented");
-  }
-
-  @Test
-  public void testGetUpperBoundAt() {
-    fail("Not yet implemented");
-  }
-
 }
