@@ -53,9 +53,9 @@ public class DB2QHistShipDate {
         System.out.println(date);
       }
       
-      Comparable<Date>[] bounds = dates.toArray(new Comparable[0]);
+      Date[] bounds = dates.toArray(new Date[0]);
       int[] freqs = ArrayUtils.toPrimitive(frequencies.toArray(new Integer[0]));
-      QHist hist = new QHist(bounds, freqs);
+      QHist<Date> hist = new QHist<Date>(bounds, freqs, dateFormat.parse("1991-01-01"));
       System.out.println(hist.getCumFrequencyOf(dateFormat.parse("1992-02-06")));
       System.out.println(hist.getCumFrequencyOf(dateFormat.parse("1998-02-16")));
     } catch (SQLException e) {

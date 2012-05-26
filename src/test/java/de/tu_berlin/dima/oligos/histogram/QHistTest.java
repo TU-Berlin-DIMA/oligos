@@ -5,18 +5,20 @@ import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
+import de.tu_berlin.dima.oligos.Profiler;
+
 public class QHistTest {
-  
-  private static final int[] REF_SEQUENCE = {1, 1, 2, 3, 4, 4, 4, 5, 6, 6, 7};
-  private static final int[] REF_FREQUENCIES = {3, 4, 4};
-  private static final Integer[] BOUNDARIES = {2, 4, 7};
-  private static final int[] SUM_FREQUENCIES = {3, 7, 11};
-  
-  private QHist hist;
+
+  private static final int[] REF_SEQUENCE = { 1, 1, 2, 3, 4, 4, 4, 5, 6, 6, 7 };
+  private static final int[] REF_FREQUENCIES = { 3, 4, 4 };
+  private static final Integer[] BOUNDARIES = { 2, 4, 7 };
+  private static final int[] SUM_FREQUENCIES = { 3, 7, 11 };
+
+  private QHist<Integer> hist;
 
   @Before
   public void setUp() throws Exception {
-    hist = new QHist(BOUNDARIES, SUM_FREQUENCIES);
+    hist = new QHist<Integer>(BOUNDARIES, SUM_FREQUENCIES, 1, 7);
   }
 
   @Test
@@ -31,14 +33,14 @@ public class QHistTest {
     assertEquals(2, hist.getIndexOf(6));
     assertEquals(-1, hist.getIndexOf(10));
   }
-  
+
   @Test
   public void testGetFrequencyAt() {
     assertEquals(3, hist.getFrequencyAt(0));
     assertEquals(4, hist.getFrequencyAt(1));
     assertEquals(4, hist.getFrequencyAt(2));
   }
-  
+
   @Test
   public void testGetFrequencyOf() {
     assertEquals(1, hist.getFrequencyOf(1, 2));
