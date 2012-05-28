@@ -1,4 +1,4 @@
-package de.tu_berlin.dima.oligos.histogram;
+package de.tu_berlin.dima.oligos.type;
 
 public interface Operator<V extends Comparable<V>> {
   V increment(V value);

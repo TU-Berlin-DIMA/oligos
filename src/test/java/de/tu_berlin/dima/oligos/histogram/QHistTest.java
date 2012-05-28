@@ -5,6 +5,8 @@ import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
+import de.tu_berlin.dima.oligos.type.Operator;
+
 public class QHistTest {
 
   // private static final int[] REF_SEQUENCE = { 1, 1, 2, 3, 4, 4, 4, 5, 6, 6, 7 };

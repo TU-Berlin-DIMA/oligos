@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map.Entry;
 import com.google.common.base.Preconditions;
 
+import de.tu_berlin.dima.oligos.type.Operator;
+
 public class AdaptiveQHist<V extends Comparable<V>> {
 
   private V min;
@@ -13,7 +15,7 @@ public class AdaptiveQHist<V extends Comparable<V>> {
   private List<Long> frequencies;
   private Operator<V> operator;
 
-  public AdaptiveQHist(QHist<V> qHist, FHist<V> fHist, Operator<V> operator) {
+  public AdaptiveQHist(QHist<V> qHist, FHist<V> fHist) {
     this.min = qHist.getMin();
     this.boundaries = new LinkedList<V>(Arrays.asList(qHist.boundaries()));
     this.frequencies = new LinkedList<Long>();
@@ -21,7 +23,7 @@ public class AdaptiveQHist<V extends Comparable<V>> {
     for (int i = 0; i < freqs.length; i++) {
       frequencies.add(qHist.getFrequencyAt(i));
     }
-    this.operator = operator;
+    this.operator = qHist.operator();
     adaptHistogram(fHist);
   }
 

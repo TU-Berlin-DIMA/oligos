@@ -1,26 +1,22 @@
 package de.tu_berlin.dima.oligos.db;
 
+import java.lang.reflect.Array;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.joda.time.DateTime;
-import org.joda.time.Days;
-
 import de.tu_berlin.dima.oligos.histogram.FHist;
-import de.tu_berlin.dima.oligos.histogram.Operator;
 import de.tu_berlin.dima.oligos.histogram.QHist;
+import de.tu_berlin.dima.oligos.type.Operator;
+import de.tu_berlin.dima.oligos.type.Parser;
 
 public class DB2Connector {
 
@@ -70,100 +66,62 @@ public class DB2Connector {
     }
   }
 
-  public FHist<Date> getDateFHistFor(String tabName, String colName)
+  @SuppressWarnings("unchecked")
+  public <V extends Comparable<V>> QHist<V> getQHistFor(String tabName,
+      String colName, Parser<V> parser, Operator<V> op, Class<V> type)
       throws SQLException {
-    FHist<Date> fHist = new FHist<Date>();
-    try {
-      SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-      PreparedStatement stmt = conn.prepareStatement(HIST_QUERY);
-      stmt.setString(1, tabName.toUpperCase());
-      stmt.setString(2, colName.toUpperCase());
-      stmt.setString(3, "F");
-      ResultSet result = stmt.executeQuery();
-
-      while (result.next()) {
-        Date key = dateFormat.parse(result.getString("COLVALUE").replaceAll(
-            "\'", ""));
-        long count = result.getLong("VALCOUNT");
-        fHist.addFrequentElement(key, count);
-
-      }
-    } catch (ParseException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
-    return fHist;
-  }
-
-  public QHist<Date> getDateQHistFor(String tabName, String colName)
-      throws SQLException {
-    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    Date min = new Date(0);
+    V min = null;
     long card = 0;
     long numNulls = 0;
     ResultSet result = null;
+
+    // obtain domain information
     PreparedStatement stmt = conn.prepareStatement(DOMAIN_QUERY);
     stmt.setString(1, tabName.toUpperCase());
     stmt.setString(2, colName.toUpperCase());
     result = stmt.executeQuery();
     if (result.next()) {
-      try {
-        min = dateFormat.parse(result.getString("LOW2KEY").replaceAll("\'", ""));
-      } catch (ParseException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
+      min = parser.parse(result.getString("LOW2KEY"));
       card = result.getLong("COLCARD");
       numNulls = result.getLong("NUMNULLS");
     }
 
+    // obtain quantile histogram
     stmt = conn.prepareStatement(HIST_QUERY);
     stmt.setString(1, tabName.toUpperCase());
     stmt.setString(2, colName.toUpperCase());
     stmt.setString(3, "Q");
     result = stmt.executeQuery();
 
-    List<Date> bounds = new ArrayList<Date>();
+    List<V> bounds = new ArrayList<V>();
     List<Long> freqs = new ArrayList<Long>();
     while (result.next()) {
-      try {
-        bounds.add(dateFormat.parse(result.getString("COLVALUE").replaceAll(
-            "\'", "")));
-      } catch (ParseException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
+      bounds.add(parser.parse(result.getString("COLVALUE")));
       freqs.add(result.getLong("VALCOUNT"));
     }
+    V[] frequencies = (V[]) Array.newInstance(type, freqs.size());
+
+    return new QHist<V>(bounds.toArray(frequencies),
+        ArrayUtils.toPrimitive(freqs.toArray(new Long[0])), min, card,
+        numNulls, op);
+  }
+
+  public <V extends Comparable<V>> FHist<V> getFHistFor(String table,
+      String column, Parser<V> parser) throws SQLException {
+    FHist<V> fHist = new FHist<V>();
+    PreparedStatement stmt = conn.prepareStatement(HIST_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    stmt.setString(3, "F");
+    ResultSet result = stmt.executeQuery();
+
+    while (result.next()) {
+      V key = parser.parse(result.getString("COLVALUE"));
+      long count = result.getLong("VALCOUNT");
+      fHist.addFrequentElement(key, count);
+    }
     
-    Operator<Date> op = new Operator<Date>() {
-      
-      private Calendar cal = Calendar.getInstance();
-
-      @Override
-      public Date increment(Date value) {
-        cal.setTime(value);
-        cal.add(Calendar.DATE, 1);
-        return cal.getTime();
-      }
-
-      @Override
-      public Date decrement(Date value) {
-        cal.setTime(value);
-        cal.add(Calendar.DATE, -1);
-        return cal.getTime();
-      }
-      
-      @Override
-      public int difference(Date val1, Date val2) {
-        DateTime dt1 = new DateTime(val1);
-        DateTime dt2 = new DateTime(val2);
-        return Days.daysBetween(dt1, dt2).getDays();
-      }
-    };
-
-    return new QHist<Date>(bounds.toArray(new Date[0]),
-        ArrayUtils.toPrimitive(freqs.toArray(new Long[0])), min, card, numNulls, op);
+    return fHist;
   }
 
   public void close() throws SQLException {

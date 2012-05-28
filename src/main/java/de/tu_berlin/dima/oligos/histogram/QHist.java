@@ -2,6 +2,8 @@ package de.tu_berlin.dima.oligos.histogram;
 
 import com.google.common.base.Preconditions;
 
+import de.tu_berlin.dima.oligos.type.Operator;
+
 /**
  * A representation of a Quantil histogram as used by IBM DB2.<br />
  * 
@@ -216,6 +218,10 @@ public class QHist<V extends Comparable<V>> {
 
   protected long cardinality() {
     return cardinality;
+  }
+  
+  protected Operator<V> operator() {
+    return operator;
   }
 
   private void checkIndex(int index) {
