@@ -1,4 +1,4 @@
-package de.tu_berlin.dima.oligos;
+package de.tu_berlin.dima.oligos.db;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
