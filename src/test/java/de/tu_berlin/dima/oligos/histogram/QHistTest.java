@@ -40,29 +40,29 @@ public class QHistTest {
 
   @Test
   public void testGetNumBuckets() {
-    assertTrue(hist.getNumBuckets() == 3);
+    assertTrue(hist.numBuckets() == 3);
   }
 
   @Test
   public void testGetBucketIndexOf() {
-    assertEquals(0, hist.getIndexOf(1));
-    assertEquals(1, hist.getIndexOf(4));
-    assertEquals(2, hist.getIndexOf(6));
-    assertEquals(-1, hist.getIndexOf(10));
+    assertEquals(0, hist.indexOf(1));
+    assertEquals(1, hist.indexOf(4));
+    assertEquals(2, hist.indexOf(6));
+    assertEquals(-1, hist.indexOf(10));
   }
 
   @Test
   public void testGetFrequencyAt() {
-    assertEquals(3, hist.getFrequencyAt(0));
-    assertEquals(4, hist.getFrequencyAt(1));
-    assertEquals(4, hist.getFrequencyAt(2));
+    assertEquals(3, hist.frequencyAt(0));
+    assertEquals(4, hist.frequencyAt(1));
+    assertEquals(4, hist.frequencyAt(2));
   }
 
   @Test
   public void testGetFrequencyOf() {
-    assertEquals(1, hist.getFrequencyOf(1, 2));
-    assertEquals(2, hist.getFrequencyOf(4, 2));
-    assertEquals(1, hist.getFrequencyOf(6, 3));
+    assertEquals(1, hist.frequencyOf(1));
+    assertEquals(2, hist.frequencyOf(4));
+    assertEquals(1, hist.frequencyOf(6));
   }
 
 }

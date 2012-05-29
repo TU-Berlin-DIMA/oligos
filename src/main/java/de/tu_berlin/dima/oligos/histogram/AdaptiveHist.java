@@ -8,20 +8,20 @@ import com.google.common.base.Preconditions;
 
 import de.tu_berlin.dima.oligos.type.Operator;
 
-public class AdaptiveQHist<V extends Comparable<V>> {
+public class AdaptiveHist<V extends Comparable<V>> {
 
   private V min;
   private List<V> boundaries;
   private List<Long> frequencies;
   private Operator<V> operator;
 
-  public AdaptiveQHist(QHist<V> qHist, FHist<V> fHist) {
-    this.min = qHist.getMin();
+  public AdaptiveHist(QHist<V> qHist, FHist<V> fHist) {
+    this.min = qHist.min();
     this.boundaries = new LinkedList<V>(Arrays.asList(qHist.boundaries()));
     this.frequencies = new LinkedList<Long>();
     long[] freqs = qHist.frequencies();
     for (int i = 0; i < freqs.length; i++) {
-      frequencies.add(qHist.getFrequencyAt(i));
+      frequencies.add(qHist.frequencyAt(i));
     }
     this.operator = qHist.operator();
     adaptHistogram(fHist);
@@ -142,6 +142,9 @@ public class AdaptiveQHist<V extends Comparable<V>> {
   
   public double getProbability(V value) {
     int index = getIndexOf(value);
+    double bucketProb = getFrequencyAt(index) / getNumElements();
+    double valueProb = 1 / getCardinalityAt(index);
+    return bucketProb * valueProb;
   }
 
   public String toString() {

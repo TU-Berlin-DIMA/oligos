@@ -31,12 +31,12 @@
 	<!-- DB2 JDBC Driver -->
 	<dependency>
 		<groupId>com.ibm.db2</groupId>
-		<artifactId>jdbc_db2</artifactId>
+		<artifactId>jdbc</artifactId>
 		<version>4.0</version>
 	</dependency>
 	<dependency>
 		<groupId>com.ibm.db2</groupId>
-		<artifactId>jdbc_db2_license</artifactId>
+		<artifactId>jdbc_license</artifactId>
 		<version>4.0</version>
 	</dependency>
 	

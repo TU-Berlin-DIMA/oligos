@@ -13,7 +13,7 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import de.tu_berlin.dima.oligos.db.DB2Connector;
-import de.tu_berlin.dima.oligos.histogram.AdaptiveQHist;
+import de.tu_berlin.dima.oligos.histogram.CombinedHist;
 import de.tu_berlin.dima.oligos.histogram.FHist;
 import de.tu_berlin.dima.oligos.histogram.QHist;
 import de.tu_berlin.dima.oligos.type.db2.DateOperator;
@@ -48,54 +48,30 @@ public class Profiler {
           new IntegerParser());
       QHist<Integer> qHist = connector.getQHistFor(table, column,
           new IntegerParser(), new IntegerOperator(), Integer.class);
-      AdaptiveQHist<Integer> aQHist = new AdaptiveQHist<Integer>(qHist, fHist);
-      System.out.println("F Histogram");
-      System.out.println(fHist);
-      System.out.println("Q Histogram");
-      System.out.println(qHist);
-      System.out.println("Augmented Q Histogram");
-      System.out.println(aQHist);
+      CombinedHist<Integer> combHist = new CombinedHist<Integer>(qHist, fHist);
+      System.out.println(combHist);
     } else if (type.equals(Double.class)) {
       FHist<Double> fHist = connector.getFHistFor(table, column,
           new DoubleParser());
       QHist<Double> qHist = connector.getQHistFor(table, column,
           new DoubleParser(), new DoubleOperator(0.01), Double.class);
-      AdaptiveQHist<Double> aQHist = new AdaptiveQHist<Double>(qHist, fHist);
-      System.out.println("F Histogram");
-      System.out.println(fHist);
-      System.out.println("Q Histogram");
-      System.out.println(qHist);
-      System.out.println("Augmented Q Histogram");
-      System.out.println(aQHist);
+      CombinedHist<Double> combHist = new CombinedHist<Double>(qHist, fHist);
+      System.out.println(combHist);
     } else if (type.equals(Date.class)) {
       FHist<Date> fHist = connector.getFHistFor(table, column, new DateParser(
           "yyyy-MM-dd"));
       QHist<Date> qHist = connector.getQHistFor(table, column, new DateParser(
           "yyyy-MM-dd"), new DateOperator(), Date.class);
-      AdaptiveQHist<Date> aQHist = new AdaptiveQHist<Date>(qHist, fHist);
-      System.out.println("F Histogram");
-      System.out.println(fHist);
-      System.out.println("Q Histogram");
-      System.out.println(qHist);
-      System.out.println("Augmented Q Histogram");
-      System.out.println(aQHist);
-      if (column.equals("O_ORDERDATE")) {
-        
-      }
+      CombinedHist<Date> combHist = new CombinedHist<Date>(qHist, fHist);
+      System.out.println(combHist);
     } else if (type.equals(BigDecimal.class)) {
       FHist<BigDecimal> fHist = connector.getFHistFor(table, column,
           new DecimalParser());
       QHist<BigDecimal> qHist = connector.getQHistFor(table, column,
           new DecimalParser(), new DecimalOperator(new BigDecimal(0.01)),
           BigDecimal.class);
-      AdaptiveQHist<BigDecimal> aQHist = new AdaptiveQHist<BigDecimal>(qHist,
-          fHist);
-      System.out.println("F Histogram");
-      System.out.println(fHist);
-      System.out.println("Q Histogram");
-      System.out.println(qHist);
-      System.out.println("Augmented Q Histogram");
-      System.out.println(aQHist);
+      CombinedHist<BigDecimal> combHist = new CombinedHist<BigDecimal>(qHist, fHist);
+      System.out.println(combHist);
     } else {
       throw new IllegalArgumentException(type.getCanonicalName()
           + " is not a supported type.");
