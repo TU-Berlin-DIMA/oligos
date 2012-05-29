@@ -145,6 +145,10 @@ public class QHist<V extends Comparable<V>> {
     return uBound;
   }
 
+  public long getCardinalityAt(int index) {
+    return operator.difference(getLowerBoundAt(index), getUpperBoundAt(index)) + 1;
+  }
+
   public long getFrequencyAt(int index) {
     checkIndex(index);
     long freq = 0;
@@ -162,6 +166,15 @@ public class QHist<V extends Comparable<V>> {
     return frequencies[index];
   }
 
+  public long getFrequencyOf(V value) {
+    int index = getIndexOf(value);
+    long freq = 0;
+    if (index > -1) {
+      freq = getFrequencyAt(index) / getCardinalityAt(index);
+    }
+    return freq;
+  }
+
   public long getFrequencyOf(V value, int numElems) {
     int index = getIndexOf(value);
     long freq = 0;
@@ -175,6 +188,13 @@ public class QHist<V extends Comparable<V>> {
     // TODO return the frequency of the value WITHIN the bucket
     int index = getIndexOf(value);
     return getCumFrequencyAt(index);
+  }
+
+  public double getProbability(V value) {
+    int index = getIndexOf(value);
+    double bucketProb = getFrequencyAt(index) / getNumElements();
+    double valueInBucketProb = 1 / getCardinalityAt(index);
+    return bucketProb * valueInBucketProb;
   }
 
   public String toString() {
@@ -219,7 +239,7 @@ public class QHist<V extends Comparable<V>> {
   protected long cardinality() {
     return cardinality;
   }
-  
+
   protected Operator<V> operator() {
     return operator;
   }

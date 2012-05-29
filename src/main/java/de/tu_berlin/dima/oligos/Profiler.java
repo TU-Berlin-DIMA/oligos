@@ -79,6 +79,9 @@ public class Profiler {
       System.out.println(qHist);
       System.out.println("Augmented Q Histogram");
       System.out.println(aQHist);
+      if (column.equals("O_ORDERDATE")) {
+        
+      }
     } else if (type.equals(BigDecimal.class)) {
       FHist<BigDecimal> fHist = connector.getFHistFor(table, column,
           new DecimalParser());

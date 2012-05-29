@@ -81,6 +81,24 @@ public class AdaptiveQHist<V extends Comparable<V>> {
   public int getNumBuckets() {
     return boundaries.size();
   }
+  
+  public long getNumElements() {
+    return frequencies.get(getNumBuckets() - 1);
+  }
+
+  public int getIndexOf(Comparable<V> value) {
+    int i = 0;
+    int len = getNumBuckets();
+    while (value.compareTo(boundaries.get(i)) > 0) {
+      if (i < len - 1) {
+        i++;
+      } else {
+        i = -1;
+        break;
+      }
+    }
+    return i;
+  }
 
   public V getLowerBoundAt(int index) {
     checkIndex(index);
@@ -99,6 +117,10 @@ public class AdaptiveQHist<V extends Comparable<V>> {
     return uBound;
   }
 
+  public long getCardinalityAt(int index) {
+    return operator.difference(getLowerBoundAt(index), getUpperBoundAt(index)) + 1;
+  }
+
   public long getFrequencyAt(int index) {
     checkIndex(index);
     return frequencies.get(index);
@@ -111,6 +133,15 @@ public class AdaptiveQHist<V extends Comparable<V>> {
       cumFreq += frequencies.get(i);
     }
     return cumFreq;
+  }
+
+  public long getFrequencyOf(V value) {
+    int index = getIndexOf(value);
+    return getFrequencyAt(index) / getCardinalityAt(index);
+  }
+  
+  public double getProbability(V value) {
+    int index = getIndexOf(value);
   }
 
   public String toString() {
