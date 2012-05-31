@@ -16,6 +16,7 @@ import de.tu_berlin.dima.oligos.db.DB2Connector;
 import de.tu_berlin.dima.oligos.histogram.CombinedHist;
 import de.tu_berlin.dima.oligos.histogram.FHist;
 import de.tu_berlin.dima.oligos.histogram.QHist;
+import de.tu_berlin.dima.oligos.type.Parser;
 import de.tu_berlin.dima.oligos.type.db2.DateOperator;
 import de.tu_berlin.dima.oligos.type.db2.DateParser;
 import de.tu_berlin.dima.oligos.type.db2.DecimalOperator;
@@ -44,33 +45,35 @@ public class Profiler {
       throws SQLException {
     System.out.println(table + "." + column);
     if (type.equals(Integer.class)) {
-      FHist<Integer> fHist = connector.getFHistFor(table, column,
-          new IntegerParser());
-      QHist<Integer> qHist = connector.getQHistFor(table, column,
-          new IntegerParser(), new IntegerOperator(), Integer.class);
-      CombinedHist<Integer> combHist = new CombinedHist<Integer>(qHist, fHist);
+      Parser<Integer> parser = new IntegerParser();
+      FHist<Integer> fHist = connector.getFHistFor(table, column, parser);
+      QHist<Integer> qHist = connector.getQHistFor(table, column, parser,
+          new IntegerOperator(), Integer.class);
+      CombinedHist<Integer> combHist = new CombinedHist<Integer>(qHist, fHist,
+          parser);
       System.out.println(combHist);
     } else if (type.equals(Double.class)) {
-      FHist<Double> fHist = connector.getFHistFor(table, column,
-          new DoubleParser());
-      QHist<Double> qHist = connector.getQHistFor(table, column,
-          new DoubleParser(), new DoubleOperator(0.01), Double.class);
-      CombinedHist<Double> combHist = new CombinedHist<Double>(qHist, fHist);
+      Parser<Double> parser = new DoubleParser();
+      FHist<Double> fHist = connector.getFHistFor(table, column, parser);
+      QHist<Double> qHist = connector.getQHistFor(table, column, parser,
+          new DoubleOperator(0.01), Double.class);
+      CombinedHist<Double> combHist = new CombinedHist<Double>(qHist, fHist,
+          parser);
       System.out.println(combHist);
     } else if (type.equals(Date.class)) {
-      FHist<Date> fHist = connector.getFHistFor(table, column, new DateParser(
-          "yyyy-MM-dd"));
-      QHist<Date> qHist = connector.getQHistFor(table, column, new DateParser(
-          "yyyy-MM-dd"), new DateOperator(), Date.class);
-      CombinedHist<Date> combHist = new CombinedHist<Date>(qHist, fHist);
+      Parser<Date> parser = new DateParser("yyyy-MM-dd", "yyyy-MM-dd");
+      FHist<Date> fHist = connector.getFHistFor(table, column, parser);
+      QHist<Date> qHist = connector.getQHistFor(table, column, parser,
+          new DateOperator(), Date.class);
+      CombinedHist<Date> combHist = new CombinedHist<Date>(qHist, fHist, parser);
       System.out.println(combHist);
     } else if (type.equals(BigDecimal.class)) {
-      FHist<BigDecimal> fHist = connector.getFHistFor(table, column,
-          new DecimalParser());
-      QHist<BigDecimal> qHist = connector.getQHistFor(table, column,
-          new DecimalParser(), new DecimalOperator(new BigDecimal(0.01)),
-          BigDecimal.class);
-      CombinedHist<BigDecimal> combHist = new CombinedHist<BigDecimal>(qHist, fHist);
+      Parser<BigDecimal> parser = new DecimalParser(2);
+      FHist<BigDecimal> fHist = connector.getFHistFor(table, column, parser);
+      QHist<BigDecimal> qHist = connector.getQHistFor(table, column, parser,
+          new DecimalOperator(new BigDecimal(0.01)), BigDecimal.class);
+      CombinedHist<BigDecimal> combHist = new CombinedHist<BigDecimal>(qHist,
+          fHist, parser);
       System.out.println(combHist);
     } else {
       throw new IllegalArgumentException(type.getCanonicalName()
@@ -137,14 +140,16 @@ public class Profiler {
       connector.connect(user, pass);
       Profiler profiler = new Profiler(connector);
       // collect statistics for ORDERS relation
-      // profiler.profileColumn("ORDERS", "O_ORDERKEY", Integer.class); // Integer
+      // profiler.profileColumn("ORDERS", "O_ORDERKEY", Integer.class); //
+      // Integer
       profiler.profileColumn("ORDERS", "O_CUSTKEY", Integer.class); // Integer
       // profiler.profileColumn("ORDERS", "O_ORDERSTATUS"); // Character(1)
       profiler.profileColumn("ORDERS", "O_TOTALPRICE", BigDecimal.class); // Decimal
       profiler.profileColumn("ORDERS", "O_ORDERDATE", Date.class); // Date
       // profiler.profileColumn("ORDERS", "O_ORDERPRIORITY"); // Character(15)
       // profiler.profileColumn("ORDERS", "O_CLERK"); // Character(15)
-      // profiler.profileColumn("ORDERS", "O_SHIPPRIORITY", Integer.class); // Integer
+      // profiler.profileColumn("ORDERS", "O_SHIPPRIORITY", Integer.class); //
+      // Integer
       // profiler.profileColumn("ORDERS", "O_COMMENT"); // Varchar(79)
 
       connector.close();

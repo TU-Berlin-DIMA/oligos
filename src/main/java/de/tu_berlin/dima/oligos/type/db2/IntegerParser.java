@@ -9,4 +9,9 @@ public class IntegerParser implements Parser<Integer> {
     return Integer.parseInt(input);
   }
 
+  @Override
+  public String format(Integer input) {
+    return input.toString();
+  }
+
 }

@@ -40,7 +40,7 @@ public class QHistTest {
 
   @Test
   public void testGetNumBuckets() {
-    assertTrue(hist.numBuckets() == 3);
+    assertTrue(hist.numberOfBuckets() == 3);
   }
 
   @Test

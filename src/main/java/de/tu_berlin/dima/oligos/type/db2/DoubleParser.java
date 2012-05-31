@@ -8,5 +8,10 @@ public class DoubleParser implements Parser<Double> {
   public Double parse(String input) {
     return Double.parseDouble(input);
   }
+  
+  @Override
+  public String format(Double input) {
+    return input.toString();
+  }
 
 }
