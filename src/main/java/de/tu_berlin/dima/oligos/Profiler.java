@@ -31,6 +31,8 @@ public class Profiler {
   private static final Logger LOGGER = Logger.getLogger(Profiler.class);
   private static final Options OPTS = new Options()
       .addOption("u", "username", true, "Username for database connection")
+      // TODO delete this option, obtain password from scanner
+      .addOption("pass", "password", true, "Password for database connection")
       .addOption("h", "hostname", true, "Connect to given host")
       .addOption("d", "database", true, "Use given database")
       .addOption("p", "port", true, "Database port");
@@ -39,6 +41,10 @@ public class Profiler {
 
   public Profiler(DB2Connector connector) {
     this.connector = connector;
+  }
+  
+  public void profileColumn(String table, String column) {
+    
   }
 
   public void profileColumn(String table, String column, Class<?> type)
@@ -94,6 +100,7 @@ public class Profiler {
     try {
       cmd = parser.parse(OPTS, args);
       String user;
+      String pass;
       String host;
       String db;
       int port;
@@ -132,12 +139,22 @@ public class Profiler {
         formatter.printHelp(Profiler.class.getSimpleName(), OPTS);
         return;
       }
+      
+      // TODO delete this option
+      if (cmd.hasOption("password")) {
+        pass = cmd.getOptionValue("password");
+      } else {
+        System.out.println("Please specify a password for the database connection");
+        formatter.printHelp(Profiler.class.getSimpleName(), OPTS);
+        return;
+      }
+      // TODO use this method to get the password
       // Scanner scanner = new Scanner(System.in);
-      // String pass = scanner.next();
-      String pass = "db2inst";
+      // pass = scanner.next();
 
       DB2Connector connector = new DB2Connector(host, db, port);
       connector.connect(user, pass);
+      LOGGER.debug(connector.getColumnType("ORDERS", "o_totalprice"));
       Profiler profiler = new Profiler(connector);
       // collect statistics for ORDERS relation
       // profiler.profileColumn("ORDERS", "O_ORDERKEY", Integer.class); //

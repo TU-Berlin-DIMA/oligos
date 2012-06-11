@@ -1,15 +1,18 @@
 package de.tu_berlin.dima.oligos.db;
 
 import java.lang.reflect.Array;
+import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -26,6 +29,29 @@ public class DB2Connector {
       + "WHERE tabname = ? AND colname = ? AND type = ? " + "ORDER BY seqno";
   private static final String DOMAIN_QUERY = "SELECT low2key, high2key, numnulls, colcard "
       + "FROM sysstat.columns WHERE tabname = ? AND colname = ?";
+  private static final String TYPE_QUERY = "SELECT typename FROM syscat.columns WHERE tabname = ? AND colname = ?";
+
+  @SuppressWarnings("serial")
+  private static final Map<String, Class<?>> TYPE_MAPPING = new HashMap<String, Class<?>>() {
+    {
+      put("SMALLINT", Short.class);
+      put("INTEGER", Integer.class);
+      put("BIGINT", Long.class);
+      put("REAL", Float.class);
+      put("DOUBLE", Double.class);
+      put("DATE", Date.class);
+      put("DECIMAL", BigDecimal.class);
+      put("CHAR", String.class);
+      put("VARCHAR", String.class);
+    }
+  };
+
+  @SuppressWarnings("serial")
+  private static final Set<Class<?>> PARAM_TYPES = new HashSet<Class<?>>() {
+    {
+      add(BigDecimal.class);
+    }
+  };
 
   @SuppressWarnings("serial")
   private static final Set<Class<?>> DISCRETE_TYPES = new HashSet<Class<?>>() {
@@ -63,6 +89,20 @@ public class DB2Connector {
     } catch (SQLException e) {
       System.err.println(e);
       return false;
+    }
+  }
+
+  public Class<?> getColumnType(String tableName, String columnName)
+      throws SQLException {
+    PreparedStatement stmt = conn.prepareStatement(TYPE_QUERY);
+    stmt.setString(1, tableName.toUpperCase());
+    stmt.setString(2, columnName.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    if (result.next()) {
+      String typeString = result.getString("TYPENAME");
+      return TYPE_MAPPING.get(typeString);
+    } else {
+      throw new IllegalArgumentException();
     }
   }
 
@@ -120,7 +160,7 @@ public class DB2Connector {
       long count = result.getLong("VALCOUNT");
       fHist.addFrequentElement(key, count);
     }
-    
+
     return fHist;
   }
 
@@ -130,5 +170,9 @@ public class DB2Connector {
 
   public static boolean isDiscreteType(Class<?> clazz) {
     return DISCRETE_TYPES.contains(clazz);
+  }
+
+  public static boolean hasParameters(Class<?> clazz) {
+    return PARAM_TYPES.contains(clazz);
   }
 }
