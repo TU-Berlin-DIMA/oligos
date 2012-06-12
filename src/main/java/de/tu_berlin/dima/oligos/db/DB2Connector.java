@@ -16,10 +16,15 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.ArrayUtils;
+
+import de.tu_berlin.dima.oligos.histogram.BucketHistogram;
+import de.tu_berlin.dima.oligos.histogram.CombinedHist;
+import de.tu_berlin.dima.oligos.histogram.ElementHistogram;
 import de.tu_berlin.dima.oligos.histogram.FHist;
 import de.tu_berlin.dima.oligos.histogram.QHist;
 import de.tu_berlin.dima.oligos.type.Operator;
 import de.tu_berlin.dima.oligos.type.Parser;
+import de.tu_berlin.dima.oligos.type.ParserFactory;
 
 public class DB2Connector {
 
@@ -164,6 +169,17 @@ public class DB2Connector {
     return fHist;
   }
 
+  @SuppressWarnings("unchecked")
+  public <V extends Comparable<V>> CombinedHist<V> profileColumn(
+      String tableName, String columnName) throws SQLException {
+    Class<V> type = (Class<V>) getColumnType(tableName, columnName);
+    Parser<V> parser = (Parser<V>) ParserFactory.createParser(type);
+    Operator<V> op = (Operator<V>) null;
+    BucketHistogram<V> bHist = getQHistFor(tableName, columnName, parser, op, type);
+    ElementHistogram<V> eHist = getFHistFor(tableName, columnName, parser);
+    return new CombinedHist<V>(bHist, eHist, parser);
+  }
+  
   public void close() throws SQLException {
     conn.close();
   }

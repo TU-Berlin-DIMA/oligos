@@ -43,8 +43,9 @@ public class Profiler {
     this.connector = connector;
   }
   
-  public void profileColumn(String table, String column) {
-    
+  public void profileColumn(String table, String column) throws SQLException {
+    CombinedHist<?> combHist = connector.<Integer> profileColumn(table, column);
+    System.out.println(combHist.toString());
   }
 
   public void profileColumn(String table, String column, Class<?> type)
@@ -160,6 +161,7 @@ public class Profiler {
       // profiler.profileColumn("ORDERS", "O_ORDERKEY", Integer.class); //
       // Integer
       profiler.profileColumn("ORDERS", "O_CUSTKEY", Integer.class); // Integer
+      profiler.profileColumn("ORDERS", "O_CUSTKEY"); // Integer
       // profiler.profileColumn("ORDERS", "O_ORDERSTATUS"); // Character(1)
       profiler.profileColumn("ORDERS", "O_TOTALPRICE", BigDecimal.class); // Decimal
       profiler.profileColumn("ORDERS", "O_ORDERDATE", Date.class); // Date
