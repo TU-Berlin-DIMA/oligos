@@ -42,10 +42,6 @@ public class Profiler {
   public Profiler(DB2Connector connector) {
     this.connector = connector;
   }
-  
-  public void profileColumn(String table, String column) {
-    
-  }
 
   public void profileColumn(String table, String column, Class<?> type)
       throws SQLException {
