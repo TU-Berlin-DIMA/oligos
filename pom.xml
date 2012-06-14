@@ -70,6 +70,7 @@
 	<build>
 		<pluginManagement>
 			<plugins>
+				<!-- Enable UTF-8 support -->
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
@@ -79,6 +80,37 @@
 						<source>1.6</source>
 						<target>1.6</target>
 						<optimize>true</optimize>
+					</configuration>
+				</plugin>
+				
+				<!--  -->
+				<plugin>
+        			<groupId>org.apache.maven.plugins</groupId>
+        			<artifactId>maven-jar-plugin</artifactId>
+        			<version>2.4</version>
+			        <configuration>
+			          <archive>
+			            <manifest>
+			              <addClasspath>true</addClasspath>
+			              <mainClass>de.tu_berlin.dima.oligos.Profiler</mainClass>
+			            </manifest>
+			          </archive>
+			        </configuration>
+				</plugin>
+				
+				<!-- Build a executable fat jar with all dependencies -->
+				<plugin>
+					<artifactId>maven-assembly-plugin</artifactId>
+					<version>2.3</version>
+					<configuration>
+						<descriptorRefs>
+							<descriptorRef>jar-with-dependencies</descriptorRef>
+						</descriptorRefs>
+						<archive>
+							<manifest>
+								<mainClass>de.tu_berlin.dima.oligos.Profiler</mainClass>
+							</manifest>
+						</archive>
 					</configuration>
 				</plugin>
 			</plugins>

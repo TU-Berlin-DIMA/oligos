@@ -1,9 +1,8 @@
 package de.tu_berlin.dima.oligos.db;
 
-import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.sql.Connection;
-import java.sql.Date;
+import java.util.Date;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -17,14 +16,14 @@ import java.util.Set;
 
 import org.apache.commons.lang3.ArrayUtils;
 
+import com.google.common.collect.Lists;
+
 import de.tu_berlin.dima.oligos.histogram.BucketHistogram;
 import de.tu_berlin.dima.oligos.histogram.CombinedHist;
 import de.tu_berlin.dima.oligos.histogram.ElementHistogram;
-import de.tu_berlin.dima.oligos.histogram.FHist;
-import de.tu_berlin.dima.oligos.histogram.QHist;
-import de.tu_berlin.dima.oligos.type.Operator;
-import de.tu_berlin.dima.oligos.type.Parser;
-import de.tu_berlin.dima.oligos.type.ParserFactory;
+import de.tu_berlin.dima.oligos.type.Type;
+import de.tu_berlin.dima.oligos.type.AbstractTypeFactory;
+import de.tu_berlin.dima.oligos.type.db2.DB2TypeFactory;
 
 public class DB2Connector {
 
@@ -46,7 +45,7 @@ public class DB2Connector {
       put("DOUBLE", Double.class);
       put("DATE", Date.class);
       put("DECIMAL", BigDecimal.class);
-      put("CHAR", String.class);
+      put("CHARACTER", String.class);
       put("VARCHAR", String.class);
     }
   };
@@ -72,10 +71,13 @@ public class DB2Connector {
   private final String database;
   private final int port;
 
+  private final AbstractTypeFactory typeFactory;
+
   public DB2Connector(final String host, final String db, final int port) {
     this.hostname = host;
     this.database = db;
     this.port = port;
+    this.typeFactory = new DB2TypeFactory();
   }
 
   public String connectionString() {
@@ -111,75 +113,78 @@ public class DB2Connector {
     }
   }
 
-  @SuppressWarnings("unchecked")
-  public <V extends Comparable<V>> QHist<V> getQHistFor(String tabName,
-      String colName, Parser<V> parser, Operator<V> op, Class<V> type)
-      throws SQLException {
-    V min = null;
-    long card = 0;
-    long numNulls = 0;
+  public BucketHistogram<?> getBucketHistogram(String table, String column,
+      Class<?> type) throws SQLException {
+    Type<?> min = null;
+    long card = 0l;
+    long numNulls = 0l;
     ResultSet result = null;
 
     // obtain domain information
     PreparedStatement stmt = conn.prepareStatement(DOMAIN_QUERY);
-    stmt.setString(1, tabName.toUpperCase());
-    stmt.setString(2, colName.toUpperCase());
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
     result = stmt.executeQuery();
     if (result.next()) {
-      min = parser.parse(result.getString("LOW2KEY"));
+      min = typeFactory.createType(type, result.getString("LOW2KEY"));
       card = result.getLong("COLCARD");
       numNulls = result.getLong("NUMNULLS");
     }
 
     // obtain quantile histogram
     stmt = conn.prepareStatement(HIST_QUERY);
-    stmt.setString(1, tabName.toUpperCase());
-    stmt.setString(2, colName.toUpperCase());
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
     stmt.setString(3, "Q");
     result = stmt.executeQuery();
 
-    List<V> bounds = new ArrayList<V>();
+    List<Type<?>> bounds = Lists.newArrayList();
     List<Long> freqs = new ArrayList<Long>();
     while (result.next()) {
-      bounds.add(parser.parse(result.getString("COLVALUE")));
+      Type<?> b = typeFactory.createType(type, result.getString("COLVALUE"));
+      bounds.add(b);
       freqs.add(result.getLong("VALCOUNT"));
     }
-    V[] frequencies = (V[]) Array.newInstance(type, freqs.size());
-
-    return new QHist<V>(bounds.toArray(frequencies),
-        ArrayUtils.toPrimitive(freqs.toArray(new Long[0])), min, card,
-        numNulls, op);
+    // Type<?>[] frequencies = (Type<?>[]) Array.newInstance(min.getClass(),
+    // freqs.size());
+    Type<?>[] boundaries = bounds.toArray(new Type<?>[0]);
+    long[] frequencies = ArrayUtils.toPrimitive(freqs.toArray(new Long[0]));
+    // return new QHist<Type<?>>(bounds.toArray(frequencies),
+    // ArrayUtils.toPrimitive(freqs.toArray(new Long[0])), min, card, numNulls);
+    return typeFactory.createBucketHistogram(boundaries, frequencies, min,
+        card, numNulls);
   }
 
-  public <V extends Comparable<V>> FHist<V> getFHistFor(String table,
-      String column, Parser<V> parser) throws SQLException {
-    FHist<V> fHist = new FHist<V>();
+  public ElementHistogram<?> getElementHistogram(String table, String column,
+      Class<?> type) throws SQLException {
     PreparedStatement stmt = conn.prepareStatement(HIST_QUERY);
     stmt.setString(1, table.toUpperCase());
     stmt.setString(2, column.toUpperCase());
     stmt.setString(3, "F");
     ResultSet result = stmt.executeQuery();
 
+    List<Type<?>> elems = Lists.newArrayList();
+    List<Long> freqs = Lists.newArrayList();
+
     while (result.next()) {
-      V key = parser.parse(result.getString("COLVALUE"));
+      Type<?> key = typeFactory.createType(type, result.getString("COLVALUE"));
       long count = result.getLong("VALCOUNT");
-      fHist.addFrequentElement(key, count);
+      freqs.add(count);
+      elems.add(key);
     }
 
-    return fHist;
+    return typeFactory.createElementHistogram(elems.toArray(new Type<?>[0]),
+        ArrayUtils.toPrimitive(freqs.toArray(new Long[0])));
   }
 
-  @SuppressWarnings("unchecked")
-  public <V extends Comparable<V>> CombinedHist<V> profileColumn(
-      String tableName, String columnName) throws SQLException {
-    Class<V> type = (Class<V>) getColumnType(tableName, columnName);
-    Parser<V> parser = (Parser<V>) ParserFactory.createParser(type);
-    Operator<V> op = (Operator<V>) null;
-    BucketHistogram<V> bHist = getQHistFor(tableName, columnName, parser, op, type);
-    ElementHistogram<V> eHist = getFHistFor(tableName, columnName, parser);
-    return new CombinedHist<V>(bHist, eHist, parser);
+  public CombinedHist<?> profileColumn(String tableName, String columnName)
+      throws SQLException {
+    Class<?> type = getColumnType(tableName, columnName);
+    BucketHistogram<?> bHist = getBucketHistogram(tableName, columnName, type);
+    ElementHistogram<?> eHist = getElementHistogram(tableName, columnName, type);
+    return typeFactory.createCombinedHistogram(eHist, bHist);
   }
-  
+
   public void close() throws SQLException {
     conn.close();
   }

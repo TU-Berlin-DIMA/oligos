@@ -8,7 +8,7 @@ package de.tu_berlin.dima.oligos.histogram;
  * <li><b>Number of bins</b> = <i>max(D) - min(D) / binSize</i></li>
  * <li>All values per bin are greater or equal AND strict smaller than the lower, resp. upper, bin bounds</li>
  * </ul>
- * @author Christoph Brücke (christoph.bruecke@campus.tu-berlin.de)
+ * @author Christoph Bruecke (christoph.bruecke@campus.tu-berlin.de)
  *
  */
 public class EquiWidthHistogram {

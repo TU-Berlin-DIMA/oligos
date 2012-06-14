@@ -1,10 +1,8 @@
 package de.tu_berlin.dima.oligos.histogram;
 
-import de.tu_berlin.dima.oligos.type.Operator;
+import de.tu_berlin.dima.oligos.type.Type;
 
-public interface BucketHistogram<V extends Comparable<V>> {
-
-  public Operator<V> operator();
+public interface BucketHistogram<V extends Type<V>> {
 
   public int numberOfBuckets();
 
