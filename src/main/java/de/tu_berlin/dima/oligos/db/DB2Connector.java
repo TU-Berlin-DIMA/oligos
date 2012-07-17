@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.log4j.Logger;
 
 import com.google.common.collect.Lists;
 
@@ -26,6 +27,8 @@ import de.tu_berlin.dima.oligos.type.AbstractTypeFactory;
 import de.tu_berlin.dima.oligos.type.db2.DB2TypeFactory;
 
 public class DB2Connector {
+
+  private static final Logger LOGGER = Logger.getLogger(DB2Connector.class);
 
   private static final String JDBC_STRING = "jdbc:db2://%s:%d/%s";
   private static final String HIST_QUERY = "SELECT colvalue, valcount "
@@ -145,12 +148,10 @@ public class DB2Connector {
       bounds.add(b);
       freqs.add(result.getLong("VALCOUNT"));
     }
-    // Type<?>[] frequencies = (Type<?>[]) Array.newInstance(min.getClass(),
-    // freqs.size());
+    
     Type<?>[] boundaries = bounds.toArray(new Type<?>[0]);
     long[] frequencies = ArrayUtils.toPrimitive(freqs.toArray(new Long[0]));
-    // return new QHist<Type<?>>(bounds.toArray(frequencies),
-    // ArrayUtils.toPrimitive(freqs.toArray(new Long[0])), min, card, numNulls);
+    
     return typeFactory.createBucketHistogram(boundaries, frequencies, min,
         card, numNulls);
   }
@@ -177,12 +178,16 @@ public class DB2Connector {
         ArrayUtils.toPrimitive(freqs.toArray(new Long[0])));
   }
 
-  public CombinedHist<?> profileColumn(String tableName, String columnName)
+  public CombinedHist<?> profileColumn(String table, String column)
       throws SQLException {
-    Class<?> type = getColumnType(tableName, columnName);
-    BucketHistogram<?> bHist = getBucketHistogram(tableName, columnName, type);
-    ElementHistogram<?> eHist = getElementHistogram(tableName, columnName, type);
-    return typeFactory.createCombinedHistogram(eHist, bHist);
+    if (hasStatistics(table, column)) {
+      Class<?> type = getColumnType(table, column);
+      BucketHistogram<?> bHist = getBucketHistogram(table, column, type);
+      ElementHistogram<?> eHist = getElementHistogram(table, column, type);
+      return typeFactory.createCombinedHistogram(eHist, bHist);
+    } else {
+      return null;
+    }
   }
 
   public void close() throws SQLException {
@@ -195,5 +200,19 @@ public class DB2Connector {
 
   public static boolean hasParameters(Class<?> clazz) {
     return PARAM_TYPES.contains(clazz);
+  }
+
+  public boolean hasStatistics(String table, String column) throws SQLException {
+    PreparedStatement stmt = conn.prepareStatement(DOMAIN_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    if (result.next()) {
+      long card = result.getLong("COLCARD");
+      if (card != -1) {
+        return true;
+      }
+    }    
+    return false;
   }
 }
