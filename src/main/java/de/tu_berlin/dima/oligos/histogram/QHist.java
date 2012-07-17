@@ -6,7 +6,7 @@ import java.util.List;
 
 import com.google.common.base.Preconditions;
 
-import de.tu_berlin.dima.oligos.type.Operator;
+import de.tu_berlin.dima.oligos.type.Type;
 
 /**
  * A representation of a Quantile histogram as used by IBM DB2.<br />
@@ -20,10 +20,10 @@ import de.tu_berlin.dima.oligos.type.Operator;
  * their methods end with the suffix <code>at</code>. <b>Value methods</b> take
  * the desired values as parameter, their suffix is <code>of</code>.
  * 
- * @author Christoph Brücke (christoph.bruecke@campus.tu-berlin.de)
+ * @author Christoph Bruecke (christoph.bruecke@campus.tu-berlin.de)
  * 
  */
-public class QHist<V extends Comparable<V>> implements BucketHistogram<V> {
+public class QHist<V extends Type<V>> implements BucketHistogram<V> {
 
   private final V[] boundaries;
   private final long[] frequencies;
@@ -31,7 +31,6 @@ public class QHist<V extends Comparable<V>> implements BucketHistogram<V> {
   private final long cardinality;
   private final V min;
   private final V max;
-  private final Operator<V> operator;
 
   /**
    * Constructor for QHist. Creates a quantile histogram with the specified
@@ -48,18 +47,17 @@ public class QHist<V extends Comparable<V>> implements BucketHistogram<V> {
    *          Maximum value of the given domain.
    */
   public QHist(final V[] boundaries, final long[] frequencies, V min,
-      long cardinality, long numNulls, Operator<V> op) {
+      long cardinality, long numNulls) {
     this.boundaries = boundaries;
     this.frequencies = frequencies;
     if (min.compareTo(boundaries[0]) == 0) {
-      this.min = op.decrement(min);
+      this.min = min.decrement();
     } else {
       this.min = min;
     }
     this.max = boundaries[boundaries.length - 1];
     this.cardinality = cardinality;
     this.numberOfNulls = numNulls;
-    this.operator = op;
     
     // change upper bounds such that for each element per bucket
     // lower <= v < upper holds
@@ -81,7 +79,7 @@ public class QHist<V extends Comparable<V>> implements BucketHistogram<V> {
    *          Maximum value of the given domain.
    */
   public QHist(final V[] boundaries, final long[] frequencies, V min, V max,
-      long cardinality, long numNulls, Operator<V> op) {
+      long cardinality, long numNulls) {
     this.boundaries = boundaries;
     this.frequencies = frequencies;
     this.min = min;
@@ -92,11 +90,6 @@ public class QHist<V extends Comparable<V>> implements BucketHistogram<V> {
     }
     this.cardinality = cardinality;
     this.numberOfNulls = numNulls;
-    this.operator = op;
-  }
-
-  public Operator<V> operator() {
-    return operator;
   }
 
   public int numberOfBuckets() {
@@ -174,7 +167,7 @@ public class QHist<V extends Comparable<V>> implements BucketHistogram<V> {
 
   @Override
   public long cardinalityAt(int index) {
-    return operator.difference(lowerBoundAt(index), upperBoundAt(index));
+    return lowerBoundAt(index).difference(upperBoundAt(index));
   }
 
   @Override
@@ -252,7 +245,7 @@ public class QHist<V extends Comparable<V>> implements BucketHistogram<V> {
 
   private void updateBoundaries() {
     for (int i = 0; i < boundaries.length; i++) {
-      boundaries[i] = operator.increment(boundaries[i]);
+      boundaries[i] = boundaries[i].increment();
     }
   }
 }

@@ -10,10 +10,9 @@ import org.apache.commons.lang3.ArrayUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
-import de.tu_berlin.dima.oligos.type.Operator;
-import de.tu_berlin.dima.oligos.type.Parser;
+import de.tu_berlin.dima.oligos.type.Type;
 
-public class CombinedHist<V extends Comparable<V>> implements
+public class CombinedHist<V extends Type<V>> implements
     BucketHistogram<V> {
 
   private final static int IN_FHIST = -2;
@@ -23,77 +22,14 @@ public class CombinedHist<V extends Comparable<V>> implements
   private V[] lowerBounds;
   private V[] upperBounds;
   private long[] frequencies;
-  private Operator<V> operator;
-  private Parser<V> parser;
 
-  public CombinedHist(BucketHistogram<V> qHist, ElementHistogram<V> fHist,
-      Parser<V> parser) {
+  public CombinedHist(BucketHistogram<V> qHist, ElementHistogram<V> fHist) {
     this.fHist = fHist;
-    this.operator = qHist.operator();
-    this.parser = parser;
-    adaptHistogram2(qHist);
+    adaptHistogram(qHist);
   }
 
   @SuppressWarnings("unchecked")
-  private void adaptHistogram(BucketHistogram<V> qHist) {
-    List<V> lBounds = new LinkedList<V>();
-    List<V> uBounds = new LinkedList<V>();
-    List<Long> freqs = new LinkedList<Long>();
-    for (int i = 0; i < qHist.numberOfBuckets(); i++) {
-      lBounds.add(qHist.lowerBoundAt(i));
-      uBounds.add(qHist.upperBoundAt(i));
-      freqs.add(qHist.frequencyAt(i));
-    }
-    int index = 0;
-    for (Entry<V, Long> e : fHist) {
-      V elem = e.getKey();
-      long count = e.getValue();
-      boolean found = false;
-
-      while (!found && index < freqs.size() - 1) {
-        V lBound = lBounds.get(index);
-        V uBound = uBounds.get(index);
-        if (uBound.compareTo(elem) > 0) {
-          if (lBound.equals(operator.decrement(uBound))) {
-            lBounds.remove(index);
-            uBounds.remove(index);
-            freqs.remove(index);
-            found = true;
-          } else if (lBound.equals(elem)) {
-            lBounds.set(index, operator.increment(elem));
-            long freq = freqs.get(index) - count;
-            freqs.set(index, freq);
-            found = true;
-          } else if (uBound.equals(operator.increment(elem))) {
-            uBounds.set(index, elem);
-            long freq = freqs.get(index) - count;
-            freqs.set(index, freq);
-            found = true;
-            index++;
-          } else {
-            long freq = (freqs.get(index) - count) / 2;
-            lBounds.set(index, operator.increment(elem));
-            freqs.set(index, freq);
-            lBounds.add(index, lBound);
-            uBounds.add(index, elem);
-            freqs.add(index, freq);
-            found = true;
-          }
-        } else {
-          index++;
-        }
-      }
-    }
-    Class<?> type = qHist.min().getClass();
-    this.lowerBounds = (V[]) Array.newInstance(type, lBounds.size());
-    this.lowerBounds = lBounds.toArray(this.lowerBounds);
-    this.upperBounds = (V[]) Array.newInstance(type, uBounds.size());
-    this.upperBounds = uBounds.toArray(this.upperBounds);
-    this.frequencies = ArrayUtils.toPrimitive(freqs.toArray(new Long[0]));
-  }
-
-  @SuppressWarnings("unchecked")
-  private void adaptHistogram2(BucketHistogram<V> hist) {
+  private void adaptHistogram(BucketHistogram<V> hist) {
     List<V> lBounds = new LinkedList<V>();
     List<V> uBounds = new LinkedList<V>();
     List<Long> freqs = new LinkedList<Long>();
@@ -121,15 +57,15 @@ public class CombinedHist<V extends Comparable<V>> implements
         V lBound = lBounds.get(index);
         V uBound = uBounds.get(index);
         if (uBound.compareTo(elem) > 0) {
-          if (lBound.equals(operator.decrement(uBound))) {
+          if (lBound.equals(uBound.decrement())) {
             lBounds.remove(index);
             uBounds.remove(index);
             freqs.remove(index);
             found = true;
           } else if (lBound.equals(elem)) {
-            lBounds.set(index, operator.increment(elem));
+            lBounds.set(index, elem.increment());
             found = true;
-          } else if (uBound.equals(operator.increment(elem))) {
+          } else if (uBound.equals(elem.increment())) {
             uBounds.set(index, elem);
             found = true;
             index++;
@@ -141,7 +77,7 @@ public class CombinedHist<V extends Comparable<V>> implements
             vals = Lists.reverse(vals);
             for (V val : vals) {
               uBounds.add(index, val);
-              lBounds.add(index + 1, operator.increment(val));
+              lBounds.add(index + 1, val.increment());
               freqs.add(index, freq);
             }
             found = true;
@@ -178,7 +114,7 @@ public class CombinedHist<V extends Comparable<V>> implements
       cumProb += prob;
       strBld.append(prob);
       strBld.append('\t');
-      strBld.append(parser.format(e.getKey()));
+      strBld.append(e.getKey().toString());
       strBld.append('\n');
     }
     for (int i = 0; i < numberOfBuckets(); i++) {
@@ -186,9 +122,9 @@ public class CombinedHist<V extends Comparable<V>> implements
       cumProb += prob;
       strBld.append(prob);
       strBld.append('\t');
-      strBld.append(parser.format(lowerBoundAt(i)));
+      strBld.append(lowerBoundAt(i).toString());
       strBld.append('\t');
-      strBld.append(parser.format(upperBoundAt(i)));
+      strBld.append(upperBoundAt(i).toString());
       strBld.append('\n');
     }
     //strBld.append(cumProb);
@@ -296,7 +232,7 @@ public class CombinedHist<V extends Comparable<V>> implements
     } else if (index == NOT_CONTAINED) {
       return 0l;
     } else {
-      return operator.difference(lowerBoundAt(index), upperBoundAt(index));
+      return lowerBoundAt(index).difference(upperBoundAt(index));
     }
   }
 
@@ -349,11 +285,6 @@ public class CombinedHist<V extends Comparable<V>> implements
   private void checkIndex(int index) {
     Preconditions.checkArgument(index >= 0 && index < numberOfBuckets(),
         "No valid bucket index was given. (0 <= index < NUMBUCKETS)");
-  }
-
-  @Override
-  public Operator<V> operator() {
-    return operator;
   }
 
   @Override

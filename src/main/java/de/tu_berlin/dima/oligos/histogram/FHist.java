@@ -9,7 +9,9 @@ import java.util.TreeMap;
 
 import com.google.common.base.Preconditions;
 
-public class FHist<V extends Comparable<V>> implements ElementHistogram<V> {
+import de.tu_berlin.dima.oligos.type.Type;
+
+public class FHist<V extends Type<V>> implements ElementHistogram<V> {
 
   private SortedMap<V, Long> frequentElements;
   private long total;
