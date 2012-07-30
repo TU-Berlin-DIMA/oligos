@@ -1,43 +1,49 @@
 package de.tu_berlin.dima.oligos.stats;
 
-import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
-
-import com.google.common.base.Preconditions;
+import java.util.SortedMap;
 import com.google.common.collect.Lists;
-
+import com.google.common.collect.Maps;
 import de.tu_berlin.dima.oligos.type.util.Operator;
 
 public class QuantileHistogram<T> implements Histogram<T> {
   
-  private final T min;
-  private final T[] boundaries; // upper bounds (a <= ub)
-  private final long frequencies[];
-  private final Operator<T> operator;
-
-  public QuantileHistogram(T min, T[] boundaries, long[] frequencies, Operator<T> operator) {
-    Preconditions.checkArgument(boundaries.length == frequencies.length);
-    this.boundaries = boundaries;
-    this.frequencies = frequencies;
-    this.min = min;
+  private T min;
+  private Operator<T> operator;
+  private SortedMap<T, Long> buckets;
+  
+  public QuantileHistogram(Operator<T> operator) {
     this.operator = operator;
+    this.min = null;
+    this.buckets = Maps.newTreeMap(operator);
   }
-
+  
+  public QuantileHistogram(T min, Operator<T> operator) {
+    this.operator = operator;
+    this.min = min;
+    this.buckets = Maps.newTreeMap(operator);
+  } 
+  
+  public void setMin(T min) {
+    this.min = min;
+  }
+  
+  public void addBound(T bound, long frequency) {
+    buckets.put(bound, frequency);
+  }
+  
   @Override
   public int getNumberOfBuckets() {
-    return boundaries.length;
+    return this.buckets.size();
   }
 
   @Override
   public int getBucketOf(T value) {
     int index = 0;
-    int len = getNumberOfBuckets();
-    while (operator.compare(boundaries[index], value) < 0) {
-      if (index < len - 1) {
+    for (T bound : buckets.keySet()) {
+      if (operator.compare(value, bound) > 0) {
         index++;
-      } else {
-        index = -1;
-        break;
       }
     }
     return index;
@@ -46,7 +52,7 @@ public class QuantileHistogram<T> implements Histogram<T> {
   @Override
   public long getTotalNumberOfValues() {
     long total = 0;
-    for (long cnt : frequencies) {
+    for (long cnt : buckets.values()) {
       total += cnt;
     }
     return total;
@@ -59,15 +65,26 @@ public class QuantileHistogram<T> implements Histogram<T> {
   }
   
   public T getLowerBoundAt(int bucket) {
-    if (bucket == 0) {
-      return min;
-    } else {
-      return boundaries[bucket - 1];
+    T lBound = min;
+    int i = 0;
+    Iterator<T> uBoundIter = buckets.keySet().iterator();
+    while (i < bucket && uBoundIter.hasNext()) {
+      lBound = uBoundIter.next();
+      i++;
     }
+    return lBound;
   }
   
   public T getUpperBoundAt(int bucket) {
-    return boundaries[bucket];
+    T uBound = null;
+    int i = 0;
+    for (T ub : buckets.keySet()) {
+      if (i == bucket) {
+        uBound = ub;
+      }
+      i++;
+    }
+    return uBound;
   }
   
   public List<T> getLowerBounds() {
@@ -79,7 +96,11 @@ public class QuantileHistogram<T> implements Histogram<T> {
   }
   
   public List<T> getUpperBounds() {
-    return Arrays.asList(boundaries);
+    List<T> uBounds = Lists.newArrayList();
+    for (int i = 0; i < getNumberOfBuckets(); i++) {
+      uBounds.add(getLowerBoundAt(i));
+    }
+    return uBounds;
   }
   
 }

@@ -149,6 +149,18 @@ public class DB2Connector {
     }
   }*/
   
+  public String getMin(String table, String column) throws SQLException {
+    PreparedStatement stmt = connection.prepareStatement(DOMAIN_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    if (result.next()) {
+      return result.getString("low2key");
+    } else {
+      return "";
+    }
+  }
+  
   public Map<String, Long> getMostFrequentValues(String table, String column) throws SQLException {
     Map<String, Long> mostFrequent = Maps.newLinkedHashMap();
     PreparedStatement stmt = connection.prepareStatement(MOST_FREQUENT_QUERY);
@@ -162,9 +174,6 @@ public class DB2Connector {
         mostFrequent.put(key, value);
       }
     }
-    if (mostFrequent.size() <= 1) {
-      mostFrequent.clear();
-    }
     return mostFrequent;
   }
   
@@ -177,10 +186,9 @@ public class DB2Connector {
     while (result.next()) {
       String key = result.getString("COLVALUE");
       long value = result.getLong("VALCOUNT");
-      qHist.put(key, value);
-    }
-    if (qHist.size() <= 1) {
-      qHist.clear();
+      if (key != null) {
+        qHist.put(key, value);        
+      }
     }
     return qHist;
   }
