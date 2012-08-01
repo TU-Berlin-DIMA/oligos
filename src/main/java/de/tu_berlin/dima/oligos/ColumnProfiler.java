@@ -7,9 +7,12 @@ import java.util.Map.Entry;
 import com.google.common.collect.Maps;
 
 import de.tu_berlin.dima.oligos.db.DB2Connector;
+import de.tu_berlin.dima.oligos.stats.Bucket;
+import de.tu_berlin.dima.oligos.stats.Histogram;
 import de.tu_berlin.dima.oligos.stats.QuantileHistogram;
-import de.tu_berlin.dima.oligos.type.util.Operator;
-import de.tu_berlin.dima.oligos.type.util.Parser;
+import de.tu_berlin.dima.oligos.stats.Histograms;
+import de.tu_berlin.dima.oligos.type.util.operator.Operator;
+import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 
 public class ColumnProfiler<T> {
 
@@ -58,12 +61,16 @@ public class ColumnProfiler<T> {
     QuantileHistogram<T> histogram = new QuantileHistogram<T>(min, operator);
     try {
       Map<String, Long> qHist = connector.getQuantileHistgram(table, column);
-      
+      long oldCount = 0l;
       for (Entry<String, Long> entry : qHist.entrySet()) {
         String key = entry.getKey();
         long count = entry.getValue();
         T value = parser.fromString(key);
-        histogram.addBound(value, count);
+        if (value.equals(min)) {
+          histogram.setMin(operator.decrement(min));
+        }
+        histogram.addBound(value, count - oldCount);
+        oldCount = count;
       }
     } catch (SQLException e) {
       // TODO Auto-generated catch block
@@ -72,12 +79,32 @@ public class ColumnProfiler<T> {
     return histogram;
   }
   
-  public void combineHistograms(Map<T, Long> mostFrequent, QuantileHistogram<T> quantileHistogram) {
+  public void profile() {
+    Map<T, Long> mostFrequent = getMostFrequentValues();
+    System.out.println("Most Frequent");
+    System.out.println(mostFrequent);
+    long total = 0;
+    for (long cnt : mostFrequent.values()) {
+      total += cnt;
+    }
+    System.out.println("Total: " + total);
+    QuantileHistogram<T> qHist = getQuantileHistogram();
+    System.out.println("Quantile Histogram");
+    System.out.println(qHist);
+    System.out.println("Total: " + qHist.getTotalNumberOfValues());
+    Histogram<T> combHist = Histograms.combineHistograms(qHist, mostFrequent, operator);
+    System.out.println("Combined Histogram");
+    System.out.println(combHist);
+    System.out.println("Total: " + combHist.getTotalNumberOfValues());
+  }
+  
+  public void writeXML() {
     
   }
   
   public void printMostFrequentValues() {
     Map<T, Long> mostFrequent = getMostFrequentValues();
+    System.out.println("Most Frequent Values");
     for (Entry<T, Long> e : mostFrequent.entrySet()) {
       System.out.println(parser.toString(e.getKey()) + "\t" + e.getValue());
     }
@@ -86,10 +113,12 @@ public class ColumnProfiler<T> {
   public void printQuantileHistogram() {
     QuantileHistogram<T> qHist = getQuantileHistogram();
     int len = qHist.getNumberOfBuckets();
+    System.out.println("Quantile Histogram");
     for (int i = 0; i < len; i++) {
       String lBound = parser.toString(qHist.getLowerBoundAt(i));
       String uBound = parser.toString(qHist.getUpperBoundAt(i));
-      System.out.println(lBound + "\t" + uBound + "\t");
+      long frequency = qHist.getFrequencyAt(i);
+      System.out.println(lBound + "\t" + uBound + "\t" + frequency);
     }
   }
 }

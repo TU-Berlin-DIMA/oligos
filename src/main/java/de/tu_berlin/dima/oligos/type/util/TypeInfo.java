@@ -1,4 +1,4 @@
-package de.tu_berlin.dima.oligos.type;
+package de.tu_berlin.dima.oligos.type.util;
 
 public class TypeInfo {
   

@@ -1,4 +1,4 @@
-package de.tu_berlin.dima.oligos.type.util;
+package de.tu_berlin.dima.oligos.type.util.operator;
 
 public class CharOperator implements Operator<Character> {
 
@@ -9,7 +9,7 @@ public class CharOperator implements Operator<Character> {
 
   @Override
   public Character increment(Character value) {
-    return value++;
+    return ++value;
   }
 
   @Override
@@ -19,7 +19,7 @@ public class CharOperator implements Operator<Character> {
 
   @Override
   public Character decrement(Character value) {
-    return value--;
+    return --value;
   }
 
   @Override

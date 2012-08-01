@@ -1,4 +1,4 @@
-package de.tu_berlin.dima.oligos.type.util;
+package de.tu_berlin.dima.oligos.type.util.parser;
 
 public interface Parser<T> {
 

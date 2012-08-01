@@ -7,9 +7,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.common.collect.Maps;
-import de.tu_berlin.dima.oligos.type.TypeInfo;
+import com.google.common.collect.Sets;
+
+import de.tu_berlin.dima.oligos.type.util.Constraint;
+import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 
 public class DB2Connector {
   
@@ -111,8 +115,22 @@ public class DB2Connector {
       return null;
     }
   }
+  
+  public boolean isNullable(String table, String column) throws SQLException {
+    PreparedStatement stmt = connection.prepareStatement(DOMAIN_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    if (result.next()) {
+      boolean nullable = result.getString("nulls").charAt(0) == 'Y' ? true : false;
+      return nullable;
+    } else {
+      return false;
+    }
+  }
 
-  /*public Constraint getColumnConstraints(String table, String column) throws SQLException {
+  public Set<Constraint> getColumnConstraints(String table, String column) throws SQLException {
+    Set<Constraint> constraints = Sets.newHashSet();
     PreparedStatement stmt = connection.prepareStatement(CONSTRAINT_QUERY);
     stmt.setString(1, table.toUpperCase());
     stmt.setString(2, column.toUpperCase());
@@ -120,14 +138,18 @@ public class DB2Connector {
     if (result.next()) {
       char con = result.getString("TYPE").charAt(0);
       if (con == 'U') {
-        return Constraint.UNIQUE;
+        constraints.add(Constraint.UNIQUE);
       } else if (con == 'P') {
-        return Constraint.PRIMARY_KEY;
+        constraints.add(Constraint.PRIMARY_KEY);
+      } else if (con == 'F') {
+        constraints.add(Constraint.FOREIGN_KEY);
       }
      }
-
-     return Constraint.NONE;
-  }*/
+    if (!isNullable(table, column)) {
+      constraints.add(Constraint.NOT_NULL);
+    }
+    return constraints;
+  }
 
   /*public ColumnDomainInfo getDomainInformation(String table, String column) throws SQLException {
     PreparedStatement stmt = connection.prepareStatement(DOMAIN_QUERY);

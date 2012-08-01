@@ -1,13 +1,17 @@
 package de.tu_berlin.dima.oligos.stats;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import de.tu_berlin.dima.oligos.type.util.Operator;
+import java.util.SortedSet;
 
-public class QuantileHistogram<T> implements Histogram<T> {
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import de.tu_berlin.dima.oligos.type.util.operator.Operator;
+
+public class QuantileHistogram<T> extends AbstractHistogram<T> {
   
   private T min;
   private Operator<T> operator;
@@ -29,8 +33,24 @@ public class QuantileHistogram<T> implements Histogram<T> {
     this.min = min;
   }
   
-  public void addBound(T bound, long frequency) {
-    buckets.put(bound, frequency);
+  public void addBound(T upperBound, long frequency) {
+    buckets.put(upperBound, frequency);
+  }
+  
+  @Override
+  public T getMin() {
+    return min;
+  }
+  
+  @Override
+  public T getMax() {
+    return buckets.lastKey();
+  }
+  
+  @Override
+  public void add(T lowerBound, T upperBound, long frequency) {
+    // TODO check consistency here, i.e. if lowerbound matches?
+    addBound(upperBound, frequency);
   }
   
   @Override
@@ -69,7 +89,7 @@ public class QuantileHistogram<T> implements Histogram<T> {
     int i = 0;
     Iterator<T> uBoundIter = buckets.keySet().iterator();
     while (i < bucket && uBoundIter.hasNext()) {
-      lBound = uBoundIter.next();
+      lBound = operator.increment(uBoundIter.next());
       i++;
     }
     return lBound;
@@ -87,20 +107,56 @@ public class QuantileHistogram<T> implements Histogram<T> {
     return uBound;
   }
   
-  public List<T> getLowerBounds() {
-    List<T> lBounds = Lists.newArrayList();
+  public long getFrequencyAt(int bucket) {
+    return new ArrayList<Long>(buckets.values()).get(bucket);
+  }
+  
+  public SortedSet<T> getLowerBounds() {
+    SortedSet<T> lBounds = Sets.newTreeSet(operator);
     for (int i = 0; i < getNumberOfBuckets(); i++) {
       lBounds.add(getLowerBoundAt(i));
     }
     return lBounds;
   }
   
-  public List<T> getUpperBounds() {
-    List<T> uBounds = Lists.newArrayList();
-    for (int i = 0; i < getNumberOfBuckets(); i++) {
-      uBounds.add(getLowerBoundAt(i));
-    }
-    return uBounds;
+  public SortedSet<T> getUpperBounds() {    
+    return (SortedSet<T>) buckets.keySet();
+  }
+  
+  public List<Long> getFrequencies() {
+    return new ArrayList<Long>(buckets.values());
+  }
+  
+  //@Override
+  public void setFrequencyAt(int bucket, long frequency) {
+    T uBound = getUpperBoundAt(bucket);
+    buckets.put(uBound, frequency);
+  }
+  
+  @Override
+  public Iterator<Bucket<T>> iterator() {
+    return new Iterator<Bucket<T>>() {
+      
+      private int index = 0;
+
+      @Override
+      public boolean hasNext() {
+        return index < getNumberOfBuckets();
+      }
+
+      @Override
+      public Bucket<T> next() {
+        Bucket<T> bucket = new Bucket<T>(getLowerBoundAt(index),
+            getUpperBoundAt(index), getFrequencyAt(index));
+        index++;
+        return bucket;
+      }
+
+      @Override
+      public void remove() {
+        throw new UnsupportedOperationException();
+      }
+    };
   }
   
 }
