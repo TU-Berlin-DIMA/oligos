@@ -1,86 +1,67 @@
 package de.tu_berlin.dima.oligos.db;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
-import java.util.Date;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.log4j.Logger;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
-import com.google.common.collect.Lists;
-
-import de.tu_berlin.dima.oligos.histogram.BucketHistogram;
-import de.tu_berlin.dima.oligos.histogram.CombinedHist;
-import de.tu_berlin.dima.oligos.histogram.ElementHistogram;
-import de.tu_berlin.dima.oligos.type.Type;
-import de.tu_berlin.dima.oligos.type.AbstractTypeFactory;
-import de.tu_berlin.dima.oligos.type.db2.DB2TypeFactory;
+import de.tu_berlin.dima.oligos.type.util.Constraint;
+import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 
 public class DB2Connector {
-
-  private static final Logger LOGGER = Logger.getLogger(DB2Connector.class);
-
-  private static final String JDBC_STRING = "jdbc:db2://%s:%d/%s";
-  private static final String HIST_QUERY = "SELECT colvalue, valcount "
-      + "FROM sysstat.coldist "
-      + "WHERE tabname = ? AND colname = ? AND type = ? " + "ORDER BY seqno";
-  private static final String DOMAIN_QUERY = "SELECT low2key, high2key, numnulls, colcard "
-      + "FROM sysstat.columns WHERE tabname = ? AND colname = ?";
-  private static final String TYPE_QUERY = "SELECT typename FROM syscat.columns WHERE tabname = ? AND colname = ?";
-
-  @SuppressWarnings("serial")
-  private static final Map<String, Class<?>> TYPE_MAPPING = new HashMap<String, Class<?>>() {
-    {
-      put("SMALLINT", Short.class);
-      put("INTEGER", Integer.class);
-      put("BIGINT", Long.class);
-      put("REAL", Float.class);
-      put("DOUBLE", Double.class);
-      put("DATE", Date.class);
-      put("DECIMAL", BigDecimal.class);
-      put("CHARACTER", String.class);
-      put("VARCHAR", String.class);
-    }
-  };
-
-  @SuppressWarnings("serial")
-  private static final Set<Class<?>> PARAM_TYPES = new HashSet<Class<?>>() {
-    {
-      add(BigDecimal.class);
-    }
-  };
-
-  @SuppressWarnings("serial")
-  private static final Set<Class<?>> DISCRETE_TYPES = new HashSet<Class<?>>() {
-    {
-      add(Integer.class);
-      add(Date.class);
-    }
-  };
-
-  private Connection conn;
-
+  
+  private final static String JDBC_STRING = "jdbc:db2://%s:%d/%s";
+  private final static String TYPE_QUERY =
+      "SELECT typename, length, scale " +
+      "FROM   SYSCAT.COLUMNS " +
+      "WHERE  tabname = ? AND colname = ?";
+  private final static String ENUMERATED_QUERY =
+      "SELECT R.num_most_frequent, S.colcard " +
+      "FROM   (SELECT COUNT(*) as num_most_frequent " +
+      "        FROM SYSSTAT.COLDIST " +
+      "        WHERE tabname = ? " +
+      "          AND colname = ? " +
+      "          AND type = 'F' " +
+      "          AND colvalue is not null) as R, " +
+      "       (SELECT colcard " +
+      "        FROM   SYSSTAT.COLUMNS " +
+      "        WHERE  tabname = ? AND colname = ?) as S";
+  private final static String CONSTRAINT_QUERY =
+      "SELECT type " +
+      "FROM   SYSCAT.TABCONST tc, SYSCAT.KEYCOLUSE kcu " +
+      "WHERE  tc.constname = kcu.constname " +
+      "  AND  tc.tabname = ? AND kcu.colname = ?";
+  private final static String DOMAIN_QUERY =
+      "SELECT low2key, high2key, numnulls, colcard, nulls, typename, length, scale " +
+      "FROM   SYSCAT.COLUMNS " +
+      "WHERE  tabname = ? AND colname = ?";
+  private final static String MOST_FREQUENT_QUERY =
+      "SELECT colvalue, valcount " +
+      "FROM   SYSSTAT.COLDIST " +
+      "WHERE  tabname = ? AND colname = ? AND type = 'F' " +
+      "ORDER BY seqno";
+  private final static String QUANTILE_HISTOGRAM_QUERY =
+      "SELECT colvalue, valcount " +
+      "FROM   SYSSTAT.COLDIST " +
+      "WHERE  tabname = ? AND colname = ? AND type = 'Q' " +
+      "ORDER BY seqno";
+  
   private final String hostname;
   private final String database;
   private final int port;
-
-  private final AbstractTypeFactory typeFactory;
-
+  private Connection connection;
+  
   public DB2Connector(final String host, final String db, final int port) {
     this.hostname = host;
     this.database = db;
     this.port = port;
-    this.typeFactory = new DB2TypeFactory();
   }
 
   public String connectionString() {
@@ -90,7 +71,7 @@ public class DB2Connector {
   public boolean connect(final String user, final String pass) {
     try {
       Class.forName("com.ibm.db2.jcc.DB2Driver");
-      conn = DriverManager.getConnection(connectionString(), user, pass);
+      connection = DriverManager.getConnection(connectionString(), user, pass);
 
       return true;
     } catch (ClassNotFoundException e) {
@@ -101,109 +82,157 @@ public class DB2Connector {
       return false;
     }
   }
-
-  public Class<?> getColumnType(String tableName, String columnName)
-      throws SQLException {
-    PreparedStatement stmt = conn.prepareStatement(TYPE_QUERY);
-    stmt.setString(1, tableName.toUpperCase());
-    stmt.setString(2, columnName.toUpperCase());
-    ResultSet result = stmt.executeQuery();
+  
+  public void close() throws SQLException {
+    connection.close();
+  }
+  
+  public Map<String, Class<?>> getTypeMapping() throws SQLException {
+    return connection.getTypeMap();
+  }
+  
+  public boolean checkColumn(String table, String column) throws SQLException {
+    DatabaseMetaData metaData = connection.getMetaData();
+    ResultSet result = metaData.getColumns(null, null, table.toUpperCase(), column.toUpperCase());
     if (result.next()) {
-      String typeString = result.getString("TYPENAME");
-      return TYPE_MAPPING.get(typeString);
+      return true;
     } else {
-      throw new IllegalArgumentException();
+      return false;
     }
   }
-
-  public BucketHistogram<?> getBucketHistogram(String table, String column,
-      Class<?> type) throws SQLException {
-    Type<?> min = null;
-    long card = 0l;
-    long numNulls = 0l;
-    ResultSet result = null;
-
-    // obtain domain information
-    PreparedStatement stmt = conn.prepareStatement(DOMAIN_QUERY);
+  
+  public TypeInfo getColumnType(String table, String column) throws SQLException {
+    PreparedStatement stmt = connection.prepareStatement(TYPE_QUERY);
     stmt.setString(1, table.toUpperCase());
     stmt.setString(2, column.toUpperCase());
-    result = stmt.executeQuery();
-    if (result.next()) {
-      min = typeFactory.createType(type, result.getString("LOW2KEY"));
-      card = result.getLong("COLCARD");
-      numNulls = result.getLong("NUMNULLS");
-    }
-
-    // obtain quantile histogram
-    stmt = conn.prepareStatement(HIST_QUERY);
-    stmt.setString(1, table.toUpperCase());
-    stmt.setString(2, column.toUpperCase());
-    stmt.setString(3, "Q");
-    result = stmt.executeQuery();
-
-    List<Type<?>> bounds = Lists.newArrayList();
-    List<Long> freqs = new ArrayList<Long>();
-    while (result.next()) {
-      Type<?> b = typeFactory.createType(type, result.getString("COLVALUE"));
-      bounds.add(b);
-      freqs.add(result.getLong("VALCOUNT"));
-    }
-    
-    Type<?>[] boundaries = bounds.toArray(new Type<?>[0]);
-    long[] frequencies = ArrayUtils.toPrimitive(freqs.toArray(new Long[0]));
-    
-    return typeFactory.createBucketHistogram(boundaries, frequencies, min,
-        card, numNulls);
-  }
-
-  public ElementHistogram<?> getElementHistogram(String table, String column,
-      Class<?> type) throws SQLException {
-    PreparedStatement stmt = conn.prepareStatement(HIST_QUERY);
-    stmt.setString(1, table.toUpperCase());
-    stmt.setString(2, column.toUpperCase());
-    stmt.setString(3, "F");
     ResultSet result = stmt.executeQuery();
-
-    List<Type<?>> elems = Lists.newArrayList();
-    List<Long> freqs = Lists.newArrayList();
-
-    while (result.next()) {
-      Type<?> key = typeFactory.createType(type, result.getString("COLVALUE"));
-      long count = result.getLong("VALCOUNT");
-      freqs.add(count);
-      elems.add(key);
-    }
-
-    return typeFactory.createElementHistogram(elems.toArray(new Type<?>[0]),
-        ArrayUtils.toPrimitive(freqs.toArray(new Long[0])));
-  }
-
-  public CombinedHist<?> profileColumn(String table, String column)
-      throws SQLException {
-    if (hasStatistics(table, column)) {
-      Class<?> type = getColumnType(table, column);
-      BucketHistogram<?> bHist = getBucketHistogram(table, column, type);
-      ElementHistogram<?> eHist = getElementHistogram(table, column, type);
-      return typeFactory.createCombinedHistogram(eHist, bHist);
+    if (result.next()) {
+      String typeName = result.getString("typename");
+      int length = result.getInt("length");
+      int scale = result.getInt("scale");
+      return new TypeInfo(typeName, length, scale);
     } else {
       return null;
     }
   }
-
-  public void close() throws SQLException {
-    conn.close();
+  
+  public boolean isNullable(String table, String column) throws SQLException {
+    PreparedStatement stmt = connection.prepareStatement(DOMAIN_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    if (result.next()) {
+      boolean nullable = result.getString("nulls").charAt(0) == 'Y' ? true : false;
+      return nullable;
+    } else {
+      return false;
+    }
   }
 
-  public static boolean isDiscreteType(Class<?> clazz) {
-    return DISCRETE_TYPES.contains(clazz);
+  public Set<Constraint> getColumnConstraints(String table, String column) throws SQLException {
+    Set<Constraint> constraints = Sets.newHashSet();
+    PreparedStatement stmt = connection.prepareStatement(CONSTRAINT_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    if (result.next()) {
+      char con = result.getString("TYPE").charAt(0);
+      if (con == 'U') {
+        constraints.add(Constraint.UNIQUE);
+      } else if (con == 'P') {
+        constraints.add(Constraint.PRIMARY_KEY);
+      } else if (con == 'F') {
+        constraints.add(Constraint.FOREIGN_KEY);
+      }
+     }
+    if (!isNullable(table, column)) {
+      constraints.add(Constraint.NOT_NULL);
+    }
+    return constraints;
   }
 
-  public static boolean hasParameters(Class<?> clazz) {
-    return PARAM_TYPES.contains(clazz);
+  /*public ColumnDomainInfo getDomainInformation(String table, String column) throws SQLException {
+    PreparedStatement stmt = connection.prepareStatement(DOMAIN_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    if (result.next()) {
+      String min = result.getString("low2key");
+      String max = result.getString("high2key");
+      long numNulls = result.getLong("numnulls");
+      long colCard = result.getLong("colcard");
+      boolean nullable = result.getString("nulls").charAt(0) == 'Y' ? true : false;
+      String type = result.getString("typename");
+      int length = result.getInt("LENGTH");
+      int scale = result.getInt("SCALE");
+      return new ColumnDomainInfo(min, max, numNulls, colCard, nullable, type, length, scale);
+    } else {
+      throw new RuntimeException("Could not find information about " + table + '.' + column);
+    }
+  }*/
+  
+  public String getMin(String table, String column) throws SQLException {
+    PreparedStatement stmt = connection.prepareStatement(DOMAIN_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    if (result.next()) {
+      return result.getString("low2key");
+    } else {
+      return "";
+    }
+  }
+  
+  public Map<String, Long> getMostFrequentValues(String table, String column) throws SQLException {
+    Map<String, Long> mostFrequent = Maps.newLinkedHashMap();
+    PreparedStatement stmt = connection.prepareStatement(MOST_FREQUENT_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    while (result.next()) {
+      String key = result.getString("COLVALUE");
+      long value = result.getLong("VALCOUNT");
+      if (key != null) {
+        mostFrequent.put(key, value);
+      }
+    }
+    return mostFrequent;
+  }
+  
+  public Map<String, Long> getQuantileHistgram(String table, String column) throws SQLException {
+    Map<String, Long> qHist = Maps.newLinkedHashMap();
+    PreparedStatement stmt = connection.prepareStatement(QUANTILE_HISTOGRAM_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    while (result.next()) {
+      String key = result.getString("COLVALUE");
+      long value = result.getLong("VALCOUNT");
+      if (key != null) {
+        qHist.put(key, value);        
+      }
+    }
+    return qHist;
   }
 
+  public boolean isEnumerated(String table, String column) throws SQLException {
+    PreparedStatement stmt = connection.prepareStatement(ENUMERATED_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    stmt.setString(3, table.toUpperCase());
+    stmt.setString(4, column.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    if (result.next()) {
+      long colCard = result.getLong("colcard");
+      int numMostFreq = result.getInt("num_most_frequent");
+      return colCard <= numMostFreq;
+    } else {
+      return false;
+    }
+  }
+  
   public boolean hasStatistics(String table, String column) throws SQLException {
-    PreparedStatement stmt = conn.prepareStatement(DOMAIN_QUERY);
+    PreparedStatement stmt = connection.prepareStatement(DOMAIN_QUERY);
     stmt.setString(1, table.toUpperCase());
     stmt.setString(2, column.toUpperCase());
     ResultSet result = stmt.executeQuery();
@@ -215,4 +244,5 @@ public class DB2Connector {
     }    
     return false;
   }
+
 }
