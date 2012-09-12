@@ -183,6 +183,42 @@ public class DB2Connector {
     }
   }
   
+  public String getMax(String table, String column) throws SQLException {
+    PreparedStatement stmt = connection.prepareStatement(DOMAIN_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    if (result.next()) {
+      return result.getString("low2key");
+    } else {
+      return "";
+    }
+  }
+  
+  public long getNumNulls(String table, String column) throws SQLException {
+    PreparedStatement stmt = connection.prepareStatement(DOMAIN_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    if (result.next()) {
+      return result.getLong("numnulls");
+    } else {
+      return 0l;
+    }
+  }
+  
+  public long getCardinality(String table, String column) throws SQLException {
+    PreparedStatement stmt = connection.prepareStatement(DOMAIN_QUERY);
+    stmt.setString(1, table.toUpperCase());
+    stmt.setString(2, column.toUpperCase());
+    ResultSet result = stmt.executeQuery();
+    if (result.next()) {
+      return result.getLong("colcard");
+    } else {
+      return 0l;
+    }
+  }
+  
   public Map<String, Long> getMostFrequentValues(String table, String column) throws SQLException {
     Map<String, Long> mostFrequent = Maps.newLinkedHashMap();
     PreparedStatement stmt = connection.prepareStatement(MOST_FREQUENT_QUERY);

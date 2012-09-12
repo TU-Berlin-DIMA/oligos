@@ -5,8 +5,6 @@ import java.sql.SQLException;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
-import java.util.Map.Entry;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -17,8 +15,14 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
 import de.tu_berlin.dima.oligos.db.DB2Connector;
-import de.tu_berlin.dima.oligos.type.util.Constraint;
+import de.tu_berlin.dima.oligos.exception.ColumnDoesNotExistException;
+import de.tu_berlin.dima.oligos.exception.TypeNotSupportedException;
+import de.tu_berlin.dima.oligos.io.MyriadWriter;
+import de.tu_berlin.dima.oligos.stat.Column;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.operator.CharOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.DateOperator;
@@ -53,55 +57,46 @@ public class Oligos {
   public Oligos(DB2Connector connector) {
     this.connector = connector;
   }
-
-  public void profileColumn(String table, String column) throws SQLException {
-    if (connector.checkColumn(table, column)) {
-      TypeInfo type = connector.getColumnType(table, column);
-      boolean isEnumerated = connector.isEnumerated(table, column);
-      boolean hasStatistics = connector.hasStatistics(table, column);
-      Set<Constraint> constraint = connector
-          .getColumnConstraints(table, column);
-      System.out.println(column + ": " + type);
-      System.out.println("enumerated: " + isEnumerated + ", statistics: "
-          + hasStatistics + ", constraints: " + constraint);
-      ColumnProfiler<?> profiler = null;
-      if (hasStatistics && !isEnumerated) {
-        if (type.getTypeName().equalsIgnoreCase("integer")) {
-          Parser<Integer> p = IntegerParser.getInstance();
-          Operator<Integer> op = IntegerOperator.getInstance();
-          profiler = new ColumnProfiler<Integer>(connector, p, op, table,
-              column);
-        } else if (type.getTypeName().equalsIgnoreCase("date")) {
-          Parser<Date> p = DateParser.getInstance();
-          Operator<Date> op = DateOperator.getInstance();
-          profiler = new ColumnProfiler<Date>(connector, p, op, table, column);
-        } else if (type.getTypeName().equalsIgnoreCase("decimal")) {
-          Parser<BigDecimal> p = DecimalParser.getInstance();
-          Operator<BigDecimal> op = new DecimalOperator(type.getScale());
-          profiler = new ColumnProfiler<BigDecimal>(connector, p, op, table,
-              column);
-        } else if (type.getTypeName().equalsIgnoreCase("character")
-            && (type.getLength() == 1)) {
-          Parser<Character> p = new CharParser();
-          Operator<Character> op = new CharOperator();
-          profiler = new ColumnProfiler<Character>(connector, p, op, table,
-              column);
-        } else {
-          return;
-        }
-        profiler.profile();
-      } else if (isEnumerated) {
-        Map<String, Long> mostFrequent = connector.getMostFrequentValues(table,
-            column);
-        for (Entry<String, Long> e : mostFrequent.entrySet()) {
-          String value = e.getKey().replace('\'', ' ').trim();
-          System.out.println(value + "\t" + e.getValue());
-        }
-      } else {
-        System.out.println(table + "." + column + " has no statistics!");
-      }
+  
+  public ColumnProfiler<?> getProfiler(String table, String column)
+      throws SQLException, TypeNotSupportedException {
+    ColumnProfiler<?> profiler = null;
+    TypeInfo type = connector.getColumnType(table, column);
+    String typeName = type.getTypeName().toLowerCase();
+    if (typeName.equals("integer")) {
+      Parser<Integer> p = IntegerParser.getInstance();
+      Operator<Integer> op = IntegerOperator.getInstance();
+      profiler = new ColumnProfiler<Integer>(connector, p, op, table, column);
+    } else if (typeName.equals("date")) {
+      Parser<Date> p = DateParser.getInstance();
+      Operator<Date> op = DateOperator.getInstance();
+      profiler = new ColumnProfiler<Date>(connector, p, op, table, column);
+    } else if (typeName.equals("decimal")) {
+      Parser<BigDecimal> p = DecimalParser.getInstance();
+      Operator<BigDecimal> op = new DecimalOperator(type.getScale());
+      profiler = new ColumnProfiler<BigDecimal>(connector, p, op, table, column);
+    } else if (typeName.equals("character")
+        && (type.getLength() == 1)) {
+      Parser<Character> p = new CharParser();
+      Operator<Character> op = new CharOperator();
+      profiler = new ColumnProfiler<Character>(connector, p, op, table, column);
     } else {
-      System.err.println(table + "." + column + " does not exist!");
+      throw new TypeNotSupportedException(typeName);
+    }
+    return profiler;
+  }
+
+  public Column<?> profile(String table, String column)
+      throws ColumnDoesNotExistException, SQLException, TypeNotSupportedException {
+    if (!connector.checkColumn(table, column)) {
+      // TODO Use log4j or throw exception
+      throw new ColumnDoesNotExistException(table, column);
+    }
+    if (connector.hasStatistics(table, column)) {
+      ColumnProfiler<?> profiler = getProfiler(table, column);
+      return profiler.profile();
+    } else {
+      return null;
     }
   }
 
@@ -114,96 +109,97 @@ public class Oligos {
 
     try {
       cmd = parser.parse(OPTS, args);
-      String user, pass, host, db, table;
-      int port;
-      String[] columns;
+      if (checkOptions(cmd, formatter)) {
+        String username = cmd.getOptionValue("username");
+        String hostname = cmd.getOptionValue("hostname");
+        String database = cmd.getOptionValue("database");
+        int port = Integer.parseInt(cmd.getOptionValue("port"));
+        String table = cmd.getOptionValue("table");
 
-      if (cmd.hasOption("help")) {
-        formatter.printHelp(USAGE, HEADER, OPTS, "");
-        return;
+        // TODO delete this option
+        String password = cmd.getOptionValue("password");
+        // TODO use this method to get the password
+        // Scanner scanner = new Scanner(System.in);
+        // pass = scanner.next();
+
+        // get the columns
+        String[] columns = cmd.getArgs();
+
+        // actually run the profiling
+        DB2Connector connector = new DB2Connector(hostname, database, port);
+        connector.connect(username, password);
+        Oligos profiler = new Oligos(connector);
+        Set<Column<?>> profiledColumns = Sets.newLinkedHashSet();
+        for (String col : columns) {
+          try {
+            Column<?> column = profiler.profile(table, col);
+            if (column != null) {
+              profiledColumns.add(column);
+            }
+          } catch (ColumnDoesNotExistException cdnee) {
+            System.err.println("Column " + cdnee.getQualifiedColumnName()
+                + " does not exist");
+          } catch (TypeNotSupportedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+          }
+        }
+        connector.close();
+        
+        Map<String, Set<Column<?>>> relations = Maps.newHashMap();
+        relations.put(table, profiledColumns);
+        MyriadWriter writer = new MyriadWriter(relations, "");
+        writer.write();
       }
-
-      if (cmd.hasOption("username")) {
-        user = cmd.getOptionValue("username");
-      } else {
-        System.out
-            .println("Please specify a username for the database connection");
-        formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
-        return;
-      }
-
-      if (cmd.hasOption("hostname")) {
-        host = cmd.getOptionValue("hostname");
-      } else {
-        System.out
-            .println("Please specify a hostname for the database connection");
-        formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
-        return;
-      }
-
-      if (cmd.hasOption("database")) {
-        db = cmd.getOptionValue("database");
-      } else {
-        System.out
-            .println("Please specify a database for the database connection");
-        formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
-        return;
-      }
-
-      if (cmd.hasOption("port")) {
-        port = Integer.parseInt(cmd.getOptionValue("port"));
-      } else {
-        System.out.println("Please specify a port for the database connection");
-        formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
-        return;
-      }
-
-      if (cmd.hasOption("table")) {
-        table = cmd.getOptionValue("table");
-      } else {
-        System.out.println("Please specify a database table");
-        formatter.printHelp(USAGE, HEADER, OPTS, "");
-        return;
-      }
-
-      // TODO delete this option
-      if (cmd.hasOption("password")) {
-        pass = cmd.getOptionValue("password");
-      } else {
-        System.out
-            .println("Please specify a password for the database connection");
-        formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
-        return;
-      }
-      // TODO use this method to get the password
-      // Scanner scanner = new Scanner(System.in);
-      // pass = scanner.next();
-
-      // get the columns
-      if (cmd.getArgs().length > 0) {
-        columns = cmd.getArgs();
-      } else {
-        System.out.println("Please specify one or more database columns");
-        formatter.printHelp(USAGE, HEADER, OPTS, "");
-        return;
-      }
-
-      // actually run the profiling
-      DB2Connector connector = new DB2Connector(host, db, port);
-      connector.connect(user, pass);
-      Oligos profiler = new Oligos(connector);
-      for (String col : columns) {
-        profiler.profileColumn(table, col);
-
-      }
-
-      connector.close();
-
     } catch (ParseException e) {
       formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
     } catch (SQLException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
     }
+  }
+  
+  public static boolean checkOptions(CommandLine cmd, HelpFormatter formatter) {
+    if (cmd.hasOption("help")) {
+      formatter.printHelp(USAGE, HEADER, OPTS, "");
+      return false;
+    }
+    if (!cmd.hasOption("username")) {
+      System.out
+          .println("Please specify a username for the database connection");
+      formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
+      return false;
+    }
+    if (!cmd.hasOption("hostname")) {
+      System.out
+          .println("Please specify a hostname for the database connection");
+      formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
+      return false;
+    }
+    if (!cmd.hasOption("database")) {
+      System.out
+          .println("Please specify a database for the database connection");
+      formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
+      return false;
+    }
+    if (!cmd.hasOption("port")) {
+      System.out.println("Please specify a port for the database connection");
+      formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
+      return false;
+    }
+    if (!cmd.hasOption("table")) {
+      System.out.println("Please specify a database table");
+      formatter.printHelp(USAGE, HEADER, OPTS, "");
+      return false;
+    }
+    // TODO delete this option
+    if (!cmd.hasOption("password")) {
+      System.out
+          .println("Please specify a password for the database connection");
+      formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
+      return false;
+    }
+    
+    return true;
   }
 }

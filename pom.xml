@@ -92,7 +92,7 @@
 			          <archive>
 			            <manifest>
 			              <addClasspath>true</addClasspath>
-			              <mainClass>de.tu_berlin.dima.oligos.Profiler</mainClass>
+			              <mainClass>de.tu_berlin.dima.oligos.Oligos</mainClass>
 			            </manifest>
 			          </archive>
 			        </configuration>
@@ -108,7 +108,7 @@
 						</descriptorRefs>
 						<archive>
 							<manifest>
-								<mainClass>de.tu_berlin.dima.oligos.Profiler</mainClass>
+								<mainClass>de.tu_berlin.dima.oligos.Oligos</mainClass>
 							</manifest>
 						</archive>
 					</configuration>

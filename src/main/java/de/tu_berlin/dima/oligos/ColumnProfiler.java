@@ -3,14 +3,17 @@ package de.tu_berlin.dima.oligos;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import de.tu_berlin.dima.oligos.db.DB2Connector;
-import de.tu_berlin.dima.oligos.stats.Bucket;
-import de.tu_berlin.dima.oligos.stats.Histogram;
-import de.tu_berlin.dima.oligos.stats.QuantileHistogram;
-import de.tu_berlin.dima.oligos.stats.Histograms;
+import de.tu_berlin.dima.oligos.stat.Column;
+import de.tu_berlin.dima.oligos.stat.histogram.Histogram;
+import de.tu_berlin.dima.oligos.stat.histogram.Histograms;
+import de.tu_berlin.dima.oligos.stat.histogram.QuantileHistogram;
+import de.tu_berlin.dima.oligos.type.util.Constraint;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 
@@ -39,6 +42,48 @@ public class ColumnProfiler<T> {
       e.printStackTrace();
     }
     return parser.fromString(value);
+  }
+  
+  public T getMax() {
+    String value = "";
+    try {
+      value = connector.getMax(table, column);
+    } catch (SQLException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    return parser.fromString(value);
+  }
+  
+  public Set<Constraint> getConstraints() {
+    Set<Constraint> constraints = Sets.newHashSet();
+    try {
+      constraints = connector.getColumnConstraints(table, column);
+    } catch (SQLException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    return constraints;
+  }
+  
+  public long getCardinality() {
+    try {
+      return connector.getCardinality(table, column);
+    } catch (SQLException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    return 0l;
+  }
+  
+  public long getNumNulls() {
+    try {
+      return connector.getNumNulls(table, column);
+    } catch (SQLException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    return 0l;
   }
   
   public Map<T, Long> getMostFrequentValues() {
@@ -78,28 +123,32 @@ public class ColumnProfiler<T> {
     }
     return histogram;
   }
-  
-  public void profile() {
-    Map<T, Long> mostFrequent = getMostFrequentValues();
-    System.out.println("Most Frequent");
-    System.out.println(mostFrequent);
-    long total = 0;
-    for (long cnt : mostFrequent.values()) {
-      total += cnt;
+
+  public Column<T> profile() {
+    //boolean hasStats = false;
+    boolean isEnum = false;
+    try {
+      //hasStats = connector.hasStatistics(table, column);
+      isEnum = connector.isEnumerated(table, column);
+    } catch (SQLException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
     }
-    System.out.println("Total: " + total);
-    QuantileHistogram<T> qHist = getQuantileHistogram();
-    System.out.println("Quantile Histogram");
-    System.out.println(qHist);
-    System.out.println("Total: " + qHist.getTotalNumberOfValues());
-    Histogram<T> combHist = Histograms.combineHistograms(qHist, mostFrequent, operator);
-    System.out.println("Combined Histogram");
-    System.out.println(combHist);
-    System.out.println("Total: " + combHist.getTotalNumberOfValues());
-  }
-  
-  public void writeXML() {
-    
+    Map<T, Long> mostFrequent = getMostFrequentValues();
+    Set<Constraint> constraints = getConstraints();
+    long card = getCardinality();
+    long numNulls = getNumNulls();
+    if (isEnum) {
+      T min = getMin();
+      T max = getMax();
+      return new Column<T>(table, column, constraints, min, max, card, numNulls, mostFrequent);
+    } else {
+      QuantileHistogram<T> qHist = getQuantileHistogram();
+      Histogram<T> combHist = Histograms.combineHistograms(qHist, mostFrequent, operator);
+      T min = combHist.getMin();
+      T max = combHist.getMax();
+      return new Column<T>(table, column, constraints, min, max, card, numNulls, combHist);
+    }
   }
   
   public void printMostFrequentValues() {

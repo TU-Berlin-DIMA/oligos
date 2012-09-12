@@ -8,6 +8,8 @@ import java.util.SortedSet;
 import org.junit.Before;
 import org.junit.Test;
 
+import de.tu_berlin.dima.oligos.stat.Bucket;
+import de.tu_berlin.dima.oligos.stat.histogram.QuantileHistogram;
 import de.tu_berlin.dima.oligos.type.util.operator.IntegerOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
