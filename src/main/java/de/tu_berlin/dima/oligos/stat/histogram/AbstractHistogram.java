@@ -1,9 +1,10 @@
-package de.tu_berlin.dima.oligos.stats;
+package de.tu_berlin.dima.oligos.stat.histogram;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
 
+import de.tu_berlin.dima.oligos.stat.Bucket;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
 public abstract class AbstractHistogram<T> implements Histogram<T> {
@@ -32,13 +33,32 @@ public abstract class AbstractHistogram<T> implements Histogram<T> {
   public abstract long getTotalNumberOfValues();
 
   @Override
-  public abstract long getElementsInRange();
-
-  @Override
   public long getCardinality() {
     T min = getMin();
     T max = getMax();
     return operator.difference(min, max);
+  }
+  
+  /*@Override
+  public long getFrequencyAt(int bucket) {
+    return getFrequencies().get(bucket);
+  }
+  
+  @Override
+  public long getBucketCardinality(int bucket) {
+    T upperBound = getUpperBounds().
+  }
+  
+  @Override
+  public double getProbabilityOf(T value) {
+    int bucket = getBucketOf(value);
+    long bucketFreq = getFrequencyAt(bucket);
+    double bucketProb = getFrequencyAt(bucket) / getTotalNumberOfValues();
+  }*/
+  
+  @Override
+  public double getProbabilityOf(T value) {
+    return 0.0;
   }
 
   @Override

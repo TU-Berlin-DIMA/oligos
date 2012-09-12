@@ -1,22 +1,25 @@
-package de.tu_berlin.dima.oligos.stats;
+package de.tu_berlin.dima.oligos.stat.histogram;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.SortedMap;
 import java.util.SortedSet;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import de.tu_berlin.dima.oligos.stat.Bucket;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
-public class GenericHistogram<T> extends AbstractHistogram<T> {
+public class CustomHistogram<T> extends AbstractHistogram<T> {
 
   private SortedSet<T> lowerBounds;
   private SortedSet<T> upperBounds;
   private List<Long> frequencies;
   private Operator<T> operator;
 
-  public GenericHistogram(Operator<T> operator) {
+  public CustomHistogram(Operator<T> operator) {
     this.operator = operator;
     this.lowerBounds = Sets.newTreeSet(operator);
     this.upperBounds = Sets.newTreeSet(operator);
@@ -76,12 +79,6 @@ public class GenericHistogram<T> extends AbstractHistogram<T> {
   }
 
   @Override
-  public long getElementsInRange() {
-    // TODO Auto-generated method stub
-    return 0;
-  }
-
-  @Override
   public SortedSet<T> getLowerBounds() {
     return lowerBounds;
   }
@@ -119,6 +116,22 @@ public class GenericHistogram<T> extends AbstractHistogram<T> {
         throw new UnsupportedOperationException();
       }
     };
+  }
+  
+  public SortedMap<T, Long> getExactValues() {
+    SortedMap<T, Long> exactVals = Maps.newTreeMap(operator);
+    for (Bucket<T> bucket : this) {
+      T lb = bucket.getLowerBound();
+      T ub = bucket.getUpperBound();
+      if (operator.compare(lb, ub) == 0) {
+        exactVals.put(lb, bucket.getFrequency());
+      }
+    }
+    return exactVals;
+  }
+  
+  public void writeDomain() {
+    // TODO write domain information in given format
   }
 
   private boolean checkConsistence() {

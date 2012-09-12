@@ -1,4 +1,4 @@
-package de.tu_berlin.dima.oligos.stats;
+package de.tu_berlin.dima.oligos.stat.histogram;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -9,6 +9,7 @@ import java.util.SortedSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import de.tu_berlin.dima.oligos.stat.Bucket;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
 public class QuantileHistogram<T> extends AbstractHistogram<T> {
@@ -76,12 +77,6 @@ public class QuantileHistogram<T> extends AbstractHistogram<T> {
       total += cnt;
     }
     return total;
-  }
-
-  @Override
-  public long getElementsInRange() {
-    // TODO Auto-generated method stub
-    return 0;
   }
   
   public T getLowerBoundAt(int bucket) {

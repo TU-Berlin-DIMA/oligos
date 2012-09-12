@@ -1,4 +1,4 @@
-package de.tu_berlin.dima.oligos.stats;
+package de.tu_berlin.dima.oligos.stat.histogram;
 
 import java.util.List;
 import java.util.Map;
@@ -8,6 +8,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import de.tu_berlin.dima.oligos.stat.Bucket;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
 public abstract class Histograms {
@@ -21,7 +22,7 @@ public abstract class Histograms {
 
   public static <T> Histogram<T> updateFrequencies(Histogram<T> hist,
       Map<T, Long> mostFrequent, Operator<T> operator) {
-    Histogram<T> histogram = new GenericHistogram<T>(operator);
+    Histogram<T> histogram = new CustomHistogram<T>(operator);
     for (Bucket<T> bucket : hist) {
       T lBound = bucket.getLowerBound();
       T uBound = bucket.getUpperBound();
@@ -41,7 +42,7 @@ public abstract class Histograms {
 
   public static <T> Histogram<T> updateBoundaries(Histogram<T> hist,
       Map<T, Long> mostFrequent, Operator<T> operator) {
-    Histogram<T> histogram = new GenericHistogram<T>(operator);
+    Histogram<T> histogram = new CustomHistogram<T>(operator);
     // Make a deep copy to keep function side effect free
     mostFrequent = Maps.newHashMap(mostFrequent);
     // List<Bucket<T>> newBuckets = Lists.newArrayList();

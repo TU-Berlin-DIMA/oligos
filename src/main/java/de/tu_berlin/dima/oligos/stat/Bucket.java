@@ -1,4 +1,4 @@
-package de.tu_berlin.dima.oligos.stats;
+package de.tu_berlin.dima.oligos.stat;
 
 public class Bucket<T> {
   private final T lowerBound;

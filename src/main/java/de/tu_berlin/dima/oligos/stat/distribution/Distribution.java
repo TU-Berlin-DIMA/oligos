@@ -1,7 +1,13 @@
-package de.tu_berlin.dima.oligos.stats;
+package de.tu_berlin.dima.oligos.stat.distribution;
 
 public interface Distribution<T> {
   
-  public void write();
+  public T getMin();
+  
+  public T getMax();
+  
+  public long getCardinality();
+  
+  public double getProbabilityOf(T value);
 
 }
