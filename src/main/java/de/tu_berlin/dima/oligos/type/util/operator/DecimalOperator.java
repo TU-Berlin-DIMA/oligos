@@ -41,10 +41,9 @@ public class DecimalOperator implements Operator<BigDecimal> {
   }
 
   @Override
-  public long difference(BigDecimal val1, BigDecimal val2) {
-    double v1 = val1.doubleValue();
-    double v2 = val2.doubleValue();
-    return (int) Math.abs(Math.round(v1 - v2));
+  public long range(BigDecimal val1, BigDecimal val2) {
+    long unscaledDiff = val1.unscaledValue().subtract(val2.unscaledValue()).longValue();
+    return Math.abs(unscaledDiff) + 1l;
   }
 
   @Override

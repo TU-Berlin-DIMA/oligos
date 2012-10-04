@@ -29,7 +29,7 @@ public class CharOperator implements Operator<Character> {
   }
 
   @Override
-  public long difference(Character val1, Character val2) {
+  public long range(Character val1, Character val2) {
     return val2 - val1;
   }
 

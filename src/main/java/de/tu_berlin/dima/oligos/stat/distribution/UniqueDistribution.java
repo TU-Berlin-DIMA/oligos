@@ -19,7 +19,7 @@ public class UniqueDistribution<T> implements Distribution<T> {
   public UniqueDistribution(final T min, final T max, final Operator<T> operator) {
     this.min = min;
     this.max = max;
-    this.cardinality = operator.difference(min, max);
+    this.cardinality = operator.range(min, max);
     this.probability = 1.0 / this.cardinality;
   }
 

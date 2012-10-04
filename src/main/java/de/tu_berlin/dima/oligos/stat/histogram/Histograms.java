@@ -3,7 +3,6 @@ package de.tu_berlin.dima.oligos.stat.histogram;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
-import java.util.Map.Entry;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -15,78 +14,67 @@ public abstract class Histograms {
 
   public static <T> Histogram<T> combineHistograms(Histogram<T> hist,
       Map<T, Long> mostFrequent, Operator<T> operator) {
-    hist = updateFrequencies(hist, mostFrequent, operator);
-    hist = updateBoundaries(hist, mostFrequent, operator);
-    return hist;
+    return adaptHistogram(hist, mostFrequent, operator);
   }
-
-  public static <T> Histogram<T> updateFrequencies(Histogram<T> hist,
-      Map<T, Long> mostFrequent, Operator<T> operator) {
-    Histogram<T> histogram = new CustomHistogram<T>(operator);
-    for (Bucket<T> bucket : hist) {
-      T lBound = bucket.getLowerBound();
-      T uBound = bucket.getUpperBound();
-      long exactCounts = 0l;
-      // count the most frequent elements that are in the current bucket
-      for (Entry<T, Long> e : mostFrequent.entrySet()) {
-        T value = e.getKey();
-        long count = e.getValue();
-        if (isInBucket(lBound, uBound, value, operator)) {
-          exactCounts += count;
-        }
-      }
-      histogram.add(lBound, uBound, bucket.getFrequency() - exactCounts);
-    }
-    return histogram;
-  }
-
-  public static <T> Histogram<T> updateBoundaries(Histogram<T> hist,
-      Map<T, Long> mostFrequent, Operator<T> operator) {
+  
+  public static <T> Histogram<T> adaptHistogram(Histogram<T> hist, Map<T, Long> mostFrequent, Operator<T> operator) {
     Histogram<T> histogram = new CustomHistogram<T>(operator);
     // Make a deep copy to keep function side effect free
     mostFrequent = Maps.newHashMap(mostFrequent);
-    // List<Bucket<T>> newBuckets = Lists.newArrayList();
     for (Bucket<T> bucket : hist) {
-      SortedSet<T> mostFreqs = collectElementsInRange(bucket, mostFrequent,
-          operator);
-      long div = operator.difference(bucket.getLowerBound(),
-          bucket.getUpperBound()) + 1;
-      if (mostFreqs.isEmpty()) {
-        histogram.add(bucket.getLowerBound(), bucket.getUpperBound(),
-            bucket.getFrequency());
-      } else {
-        div -= mostFreqs.size();
-        for (T elem : mostFreqs) {
-          if (isLowerBound(bucket, elem, operator)) {
-            histogram.add(elem, elem, mostFrequent.get(elem));
-            bucket = new Bucket<T>(operator.increment(elem), bucket.getUpperBound(), bucket.getFrequency());
-          } else if (isUpperBound(bucket, elem, operator)) {
-            div = 1l;
-            histogram.add(bucket.getLowerBound(), operator.decrement(elem), bucket.getFrequency());
-            bucket = new Bucket<T>(elem, elem, mostFrequent.get(elem));
-          } else if (operator.difference(bucket.getLowerBound(),
-              bucket.getUpperBound()) + 1 == 1) {
-            bucket = new Bucket<T>(elem, elem, mostFrequent.get(elem));
-          } else {
-            long mul = operator.difference(bucket.getLowerBound(), elem) + 1;
-            long freq = bucket.getFrequency();
-            histogram.add(bucket.getLowerBound(), operator.decrement(elem), mul
-                * freq / div);
-            histogram.add(elem, elem, mostFrequent.get(elem));
-            bucket = new Bucket<T>(operator.increment(elem),
-                bucket.getUpperBound(), freq);
-          }
-          // remove the element as there could not be any other bucket
-          // containing it
+      SortedSet<T> elemsInRange = collectElementsInRange(bucket, mostFrequent, operator);
+      // sum the most frequent elements in range
+      long sumInRange = 0l;
+      for (T e : elemsInRange) {
+        sumInRange += mostFrequent.get(e);
+      }
+      // adapt the frequency count of the current bucket
+      // i.e. subtract the number of most frequent elements
+      bucket = new Bucket<T>(bucket.getLowerBound(), bucket.getUpperBound(), bucket.getFrequency() - sumInRange);
+      
+      // adapt the bucket
+      // i.e. change the boundaries, introduce new buckets, ...
+      for (T elem : elemsInRange) {
+        T lBound = bucket.getLowerBound();
+        T uBound = bucket.getUpperBound();
+        long elemCnt = mostFrequent.get(elem);
+        // bucket has exact one element and this is the most frequent
+        if (lBound.equals(uBound) && lBound.equals(elem)) {
+          histogram.add(lBound, uBound, elemCnt);
           mostFrequent.remove(elem);
         }
-        long mul = operator.difference(bucket.getLowerBound(), bucket.getUpperBound()) + 1;
-        histogram.add(bucket.getLowerBound(), bucket.getUpperBound(), mul * bucket.getFrequency() / div);
+        // the most frequent element is the lower bound of the current bucket
+        else if (lBound.equals(elem)) {
+          histogram.add(lBound, elem, elemCnt);
+          bucket = new Bucket<T>(operator.increment(lBound), uBound, bucket.getFrequency());
+          mostFrequent.remove(elem);
+        }
+        // the most frequent element is the upper bound of the current bucket
+        else if (uBound.equals(elem)) {
+          histogram.add(lBound, operator.decrement(uBound), bucket.getFrequency());
+          histogram.add(elem, elem, elemCnt);
+          mostFrequent.remove(elem);
+        }
+        // common case, that the most frequent value is within the current bucket
+        else {
+          // shrink the current bucket and add shrunk bucket and most frequent element to histogram
+          long range = operator.range(lBound, uBound);
+          long lowerSize = operator.range(lBound, elem);
+          long lowerFreq = lowerSize * bucket.getFrequency() / range;
+          histogram.add(lBound, operator.decrement(elem), lowerFreq);
+          histogram.add(elem, elem, elemCnt);
+          long upperSize = operator.range(operator.increment(elem), uBound);
+          long upperFreq = upperSize * bucket.getFrequency() / range;
+          bucket = new Bucket<T>(operator.increment(elem), uBound, upperFreq);
+          mostFrequent.remove(elem);
+        }
       }
+      histogram.add(bucket.getLowerBound(), bucket.getUpperBound(), bucket.getFrequency());
     }
+
     return histogram;
   }
-  
+
   public static <T> SortedSet<T> collectElementsInRange(Bucket<T> bucket, Map<T, Long> mostFrequent, Operator<T> operator) {
     SortedSet<T> elemsInRange = Sets.newTreeSet(operator);
     for (T elem : mostFrequent.keySet()) {

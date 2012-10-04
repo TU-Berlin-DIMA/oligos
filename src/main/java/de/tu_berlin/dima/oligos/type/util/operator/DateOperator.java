@@ -57,7 +57,7 @@ public class DateOperator implements Operator<Date> {
   }
 
   @Override
-  public long difference(Date val1, Date val2) {
+  public long range(Date val1, Date val2) {
     DateTime dt1 = new DateTime(val1);
     DateTime dt2 = new DateTime(val2);
     return Days.daysBetween(dt1, dt2).getDays();

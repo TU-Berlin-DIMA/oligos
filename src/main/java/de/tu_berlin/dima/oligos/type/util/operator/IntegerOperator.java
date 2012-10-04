@@ -38,7 +38,7 @@ public class IntegerOperator implements Operator<Integer> {
   }
 
   @Override
-  public long difference(Integer val1, Integer val2) {
+  public long range(Integer val1, Integer val2) {
     return (long) val2 - val1;
   }
   

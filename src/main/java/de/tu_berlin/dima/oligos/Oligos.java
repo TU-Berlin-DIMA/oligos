@@ -81,7 +81,8 @@ public class Oligos {
       Operator<Character> op = new CharOperator();
       profiler = new ColumnProfiler<Character>(connector, p, op, table, column);
     } else {
-      throw new TypeNotSupportedException(typeName);
+      LOGGER.warn("Could not profile " + table + "." + column);
+      throw new TypeNotSupportedException(typeName, type.getLength());
     }
     return profiler;
   }

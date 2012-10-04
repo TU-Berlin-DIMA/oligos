@@ -28,6 +28,9 @@ public class CustomHistogram<T> extends AbstractHistogram<T> {
   
   @Override
   public void add(T lowerBound, T upperBound, long frequency) {
+    if (lowerBounds.contains(lowerBound) || upperBounds.contains(upperBound)) {
+      return;
+    }
     lowerBounds.add(lowerBound);
     upperBounds.add(upperBound);
     frequencies.add(frequency);

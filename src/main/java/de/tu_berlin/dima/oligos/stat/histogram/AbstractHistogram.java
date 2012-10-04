@@ -36,7 +36,7 @@ public abstract class AbstractHistogram<T> implements Histogram<T> {
   public long getCardinality() {
     T min = getMin();
     T max = getMax();
-    return operator.difference(min, max);
+    return operator.range(min, max);
   }
   
   /*@Override
