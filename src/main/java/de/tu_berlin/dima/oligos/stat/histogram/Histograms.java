@@ -1,9 +1,7 @@
 package de.tu_berlin.dima.oligos.stat.histogram;
 
-import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
@@ -93,29 +91,6 @@ public abstract class Histograms {
       Operator<T> operator) {
     return operator.compare(lowerBound, value) <= 0
         && operator.compare(value, upperBound) <= 0;
-  }
-  
-  public static <T> boolean isLowerBound(Bucket<T> bucket, T value, Operator<T> operator) {
-    return equals(bucket.getLowerBound(), value, operator);
-  }
-  
-  public static <T> boolean isUpperBound(Bucket<T> bucket, T value, Operator<T> operator) {
-    return equals(bucket.getUpperBound(), value, operator);
-  }
-
-  public static <T> boolean equals(T other, T value, Operator<T> operator) {
-    return operator.compare(other, value) == 0;
-  }
-
-  public static <T> List<T> collectValuesInRange(Map<T, Long> mostFrequent,
-      T lowerBound, T upperBound, Operator<T> operator) {
-    List<T> vals = Lists.newArrayList();
-    for (T val : mostFrequent.keySet()) {
-      if (isInBucket(lowerBound, upperBound, val, operator)) {
-        vals.add(val);
-      }
-    }
-    return vals;
   }
 
 }
