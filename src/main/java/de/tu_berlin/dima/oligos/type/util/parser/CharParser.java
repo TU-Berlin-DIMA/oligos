@@ -8,7 +8,7 @@ public class CharParser implements Parser<Character> {
   }
 
   @Override
-  public String toString(Character value) {
+  public String toString(Object value) {
     return value.toString();
   }
 

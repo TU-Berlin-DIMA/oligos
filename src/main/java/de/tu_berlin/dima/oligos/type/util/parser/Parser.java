@@ -4,5 +4,5 @@ public interface Parser<T> {
 
   public T fromString(String value);
 
-  public String toString(T value);
+  public String toString(Object value);
 }

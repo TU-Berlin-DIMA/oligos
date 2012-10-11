@@ -38,7 +38,7 @@ public class DateParser implements Parser<Date> {
   }
 
   @Override
-  public String toString(Date value) {
+  public String toString(Object value) {
     SimpleDateFormat outFormat = new SimpleDateFormat(DEFAULT_OUTPUT_FORMAT);
     return outFormat.format(value);
   }

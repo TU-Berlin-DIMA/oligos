@@ -23,7 +23,7 @@ public class IntegerParser implements Parser<Integer> {
   }
   
   @Override
-  public String toString(Integer value) {
+  public String toString(Object value) {
     return value.toString();
   }
 

@@ -28,7 +28,7 @@ public class DecimalParser implements Parser<BigDecimal> {
   }
 
   @Override
-  public String toString(BigDecimal value) {
+  public String toString(Object value) {
     return value.toString();
   }
 
