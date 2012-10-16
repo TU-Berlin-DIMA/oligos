@@ -22,13 +22,15 @@ public class ColumnProfiler<T> {
   private final DB2Connector connector;
   private final String table;
   private final String column;
+  private final String type;
   private final Operator<T> operator;
   private final Parser<T> parser;
   
-  public ColumnProfiler(DB2Connector connector, Parser<T> parser, Operator<T> operator, String table, String column) {
+  public ColumnProfiler(DB2Connector connector, Parser<T> parser, Operator<T> operator, String table, String column, String type) {
     this.connector = connector;
     this.table = table;
     this.column = column;
+    this.type = type;
     this.operator = operator;
     this.parser = parser;
   }
@@ -141,13 +143,13 @@ public class ColumnProfiler<T> {
     if (isEnum) {
       T min = getMin();
       T max = getMax();
-      return new Column<T>(table, column, constraints, min, max, card, numNulls, mostFrequent);
+      return new Column<T>(table, column, type, constraints, min, max, card, numNulls, mostFrequent);
     } else {
       QuantileHistogram<T> qHist = getQuantileHistogram();
       Histogram<T> combHist = Histograms.combineHistograms(qHist, mostFrequent, operator);
       T min = combHist.getMin();
       T max = combHist.getMax();
-      return new Column<T>(table, column, constraints, min, max, card, numNulls, combHist);
+      return new Column<T>(table, column, type, constraints, min, max, card, numNulls, combHist);
     }
   }
   

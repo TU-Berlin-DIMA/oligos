@@ -1,7 +1,10 @@
 package de.tu_berlin.dima.oligos.io;
 
 import java.io.File;
-import java.io.StringWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -16,16 +19,33 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import org.omg.CORBA.portable.ValueBase;
 import org.w3c.dom.Comment;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Text;
 
+import com.google.common.base.Charsets;
 import com.google.common.collect.Maps;
+import com.google.common.io.Files;
 
+import de.tu_berlin.dima.oligos.stat.Bucket;
 import de.tu_berlin.dima.oligos.stat.Column;
+import de.tu_berlin.dima.oligos.stat.histogram.Histogram;
+import de.tu_berlin.dima.oligos.stat.histogram.Histograms;
+import de.tu_berlin.dima.oligos.type.TypeManager;
+import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 
 public class MyriadWriter {
+  
+  private static final char FILE_SEPARATOR = '/';
+  @SuppressWarnings("serial")
+  private static final Map<String, String> TYPE_MAPPING = new HashMap<String, String>(){{
+    put("integer", "I32u");
+    put("decimal", "Decimal");
+    put("date", "Date");
+    put("character", "String");
+  }};
 
   private final String outputDirectory;
   private final String domainDirectory;
@@ -38,8 +58,8 @@ public class MyriadWriter {
   public MyriadWriter(Map<String, Set<Column<?>>> relations, String outputDirectory) {
     try {
     this.outputDirectory = outputDirectory;
-    this.domainDirectory = outputDirectory + File.pathSeparator + "domain";
-    this.distributionDirectory = outputDirectory + File.pathSeparator
+    this.domainDirectory = outputDirectory + FILE_SEPARATOR + "domain";
+    this.distributionDirectory = outputDirectory + FILE_SEPARATOR
         + "distribution";
     this.relations = relations;
     this.document = createXmlDocument();
@@ -53,7 +73,7 @@ public class MyriadWriter {
     parameters.put(key, value);
   }
 
-  public void write() {
+  public void write() throws IOException {
     try {
       // create folders
       createDirectory(outputDirectory);
@@ -65,30 +85,29 @@ public class MyriadWriter {
       
       // write parameters to xml
       Element params = document.createElement("paramaters");
-      writeParameters(params);
+      createParameters(params);
       root.appendChild(params);
 
       // write function to xml
       Element funcs = document.createElement("functions");
-      writeFunctions(funcs);
+      createFunctions(funcs);
       root.appendChild(funcs);
       
       // write enum_sets to xml
       Element enums = document.createElement("enum_sets");
-      writeEnumSets(enums);
+      createEnumSets(enums);
       root.appendChild(enums);
       
       // write record sequences
       Element recs = document.createElement("record_sequences");
-      writeRecordSequences(recs);
+      createRecordSequences(recs);
       root.appendChild(recs);
 
       // transfrom xml to String
-      document.appendChild(root);
-      String xmlString = getXmlString(document);
-      System.out.println(xmlString);
-      
-      // TODO write xml to disc
+      document.appendChild(root);      
+      writeXml(document);
+      writeDomains();
+      writeDistributions();
     } catch (TransformerException tfe) {
       tfe.printStackTrace(System.err);
     }
@@ -106,7 +125,7 @@ public class MyriadWriter {
     return builder.newDocument();
   }
 
-  private void writeParameters(Element params) {
+  private void createParameters(Element params) {
     for (Entry<String, Object> e : parameters.entrySet()) {
       Element param = document.createElement("parameter");
       param.setAttribute("key", e.getKey());
@@ -116,7 +135,7 @@ public class MyriadWriter {
     }
   }
 
-  private void writeFunctions(Element funcs) {
+  private void createFunctions(Element funcs) {
     for (Entry<String, Set<Column<?>>> e : relations.entrySet()) {
       String table = e.getKey();
       Set<Column<?>> columns = e.getValue();
@@ -125,21 +144,36 @@ public class MyriadWriter {
       for (Column<?> col : columns) {
         Element func = document.createElement("function");
         func.setAttribute("key", "Pr[" + col.getName() + "]");
-        // TODO get actual type, resp. MyriadType
-        func.setAttribute("type", "");
+        // Functions for columns with unique values
         if (col.isUnique()) {
+          func.setAttribute("type", "uniform_probability");
           Element argMin = document.createElement("argument");
           Element argMax = document.createElement("argument");
-          argMin.setAttribute("x_min", col.getMin().toString());
-          argMax.setAttribute("x_max", col.getMax().toString());
+          argMin.setAttribute("key", "x_min");
+          argMin.setAttribute("value", col.getMin().toString());
+          argMin.setAttribute("type", getMyriadType(col.getType()));
+          argMax.setAttribute("key", "x_max");
+          argMax.setAttribute("value", col.getMax().toString());
+          argMax.setAttribute("type", getMyriadType(col.getType()));
           func.appendChild(argMin);
           func.appendChild(argMax);
-        } else if (col.isEnumerated()) {
+        } 
+        // Functions for columns with "enumerated" values
+        else if (col.isEnumerated()) {
+          func.setAttribute("type", "combined_probability[Enum]");
           Element argPath = document.createElement("argument");
           argPath.setAttribute("key", "path");
           argPath.setAttribute("type", "String");
-          argPath.setAttribute("value", domainDirectory + File.pathSeparator
-              + col.getName() + ".dist");
+          argPath.setAttribute("value", col.getName() + ".domain");
+          func.appendChild(argPath);
+        } 
+        // Functions for "ordinary" columns with full statistics 
+        else {
+          func.setAttribute("type", "combined_probability[" + getMyriadType(col.getType()) + "]");
+          Element argPath = document.createElement("argument");
+          argPath.setAttribute("key", "path");
+          argPath.setAttribute("type", "String");
+          argPath.setAttribute("value", col.getName() + ".distribution");
           func.appendChild(argPath);
         }
         funcs.appendChild(func);
@@ -147,7 +181,7 @@ public class MyriadWriter {
     }
   }
 
-  private void writeEnumSets(Element enums) {
+  private void createEnumSets(Element enums) {
     for (Entry<String, Set<Column<?>>> e : relations.entrySet()) {
       String table = e.getKey();
       Set<Column<?>> columns = e.getValue();
@@ -160,7 +194,7 @@ public class MyriadWriter {
           Element argPath = document.createElement("argument");
           argPath.setAttribute("key", "path");
           argPath.setAttribute("type", "String");
-          argPath.setAttribute("value", domainDirectory + File.pathSeparator
+          argPath.setAttribute("value", domainDirectory + FILE_SEPARATOR
               + col.getName() + ".domain");
           enumSet.appendChild(argPath);
           enums.appendChild(enumSet);
@@ -169,8 +203,9 @@ public class MyriadWriter {
     }
   }
 
-  private void writeRecordSequences(Element recs) {
+  private void createRecordSequences(Element recs) {
     for (Entry<String, Set<Column<?>>> e : relations.entrySet()) {
+      long tableCol = 0l;
       String table = e.getKey();
       Set<Column<?>> columns = e.getValue();
       Comment comment = document.createComment("record sequence for " + table);
@@ -185,23 +220,22 @@ public class MyriadWriter {
           field.setAttribute("type", "Enum");
           field.setAttribute("enumref", col.getName());
         } else {
-       // TODO insert Myriad Type
-          field.setAttribute("type", "");
+          field.setAttribute("type", getMyriadType(col.getType()));
         }
         recType.appendChild(field);
+        tableCol = Math.max(col.getNumberOfValues(), tableCol);
       }
       rand.appendChild(recType);
       
       Element hydrs = document.createElement("hydrators");
       for (Column<?> col : columns) {
         Element hyd = document.createElement("hydrator");
-        hyd.setAttribute("key", "set_" + col.getName());
-        // TODO set actual myriad hydrator operator
-        hyd.setAttribute("type", "");
+        hyd.setAttribute("key", "set_" + col.getColumn());
+        hyd.setAttribute("type", "simple_clustered_hydrator");
         Element argField = document.createElement("argument");
         argField.setAttribute("key", "field");
         argField.setAttribute("type", "field_ref");
-        argField.setAttribute("ref", col.getName());
+        argField.setAttribute("ref", col.getColumn());
         hyd.appendChild(argField);
         Element argProb = document.createElement("argument");
         argProb.setAttribute("key", "probability");
@@ -212,23 +246,134 @@ public class MyriadWriter {
       }
       rand.appendChild(hydrs);
       
-      // TODO add hydrator plan
+      Element hydrPlan = document.createElement("hydratorPlan");
+      for (Column<?> col : columns) {
+        Element hydrRef = document.createElement("hydrator_ref");
+        hydrRef.setAttribute("ref", col.getName());
+        hydrPlan.appendChild(hydrRef);
+      }
+      rand.appendChild(hydrPlan);
+      createCardinalityEstimator(rand, tableCol);
+      createGeneratorTasks(rand, table);
       recs.appendChild(rand);
     }
   }
 
-  private String getXmlString(Document document) throws TransformerException {
+  private void createGeneratorTasks(Element rand, String table) {
+    Element genTasks = document.createElement("generator_tasks");
+    Element genTask = document.createElement("generator_task");
+    genTask.setAttribute("key", table + ".generate");
+    genTask.setAttribute("type", "partitioned_iterator");
+    genTasks.appendChild(genTask);
+    rand.appendChild(genTasks);
+  }
+  
+  private void createCardinalityEstimator(Element rand, long cardinality) {
+    Element cardEstimator = document.createElement("cardinality_estimator");
+    cardEstimator.setAttribute("type", "linear_scale_estimator");
+    Element cardEstArg = document.createElement("argument");
+    cardEstArg.setAttribute("key", "base_cardinality");
+    cardEstArg.setAttribute("type", "String");
+    cardEstArg.setAttribute("value", cardinality + "");
+    cardEstimator.appendChild(cardEstArg);
+    rand.appendChild(cardEstimator);
+  }
+  
+  private String getMyriadType(String internalType) {
+    return TYPE_MAPPING.get(internalType);
+  }
+  
+  private void writeXml(Document document) throws TransformerException, IOException {
+    // Create xml file and parent folders
+    File xmlFile = new File(outputDirectory + FILE_SEPARATOR + "prototype.xml");
+    Files.createParentDirs(xmlFile);
+    Files.touch(xmlFile);
+
     // set up a transformer
     TransformerFactory transfac = TransformerFactory.newInstance();
     Transformer trans = transfac.newTransformer();
-    trans.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+    //trans.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+    trans.setOutputProperty(OutputKeys.STANDALONE, "yes");
     trans.setOutputProperty(OutputKeys.INDENT, "yes");
+    trans.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
 
     // create string from xml tree
-    StringWriter sw = new StringWriter();
-    StreamResult result = new StreamResult(sw);
+    FileWriter fw = new FileWriter(xmlFile);
+    StreamResult result = new StreamResult(fw);
     DOMSource source = new DOMSource(document);
     trans.transform(source, result);
-    return sw.toString();
+  }
+  
+  private void writeDomains() throws IOException {
+    for (Entry<String, Set<Column<?>>> e : relations.entrySet()) {
+      Set<Column<?>> columns = e.getValue();
+      for (Column<?> col : columns) {
+        if (col.isEnumerated()) {
+          // TODO write the domain file
+          File domainFile = new File(domainDirectory + FILE_SEPARATOR + col.getTable() + "." + col.getColumn());
+          Files.createParentDirs(domainFile);
+          Files.touch(domainFile);
+          Files.write("", domainFile, Charsets.UTF_8);
+          Map<?, Long> domain = col.getDomain();
+          long total = col.getNumberOfValues();
+          Files.append ("# numberofexactvals: " + domain.size(), domainFile, Charsets.UTF_8);
+          Files.append("\n", domainFile, Charsets.UTF_8);
+          Files.append ("# numberofbins: 0", domainFile, Charsets.UTF_8);
+          Files.append("\n", domainFile, Charsets.UTF_8);
+          Files.append ("# nullprobability: " + col.getNumNulls() / (double) total, domainFile, Charsets.UTF_8);
+          Files.append("\n", domainFile, Charsets.UTF_8);
+          for (Entry<?, Long> d : domain.entrySet()) {
+            String value = d.getKey().toString();
+            long count = d.getValue();
+            Files.append ((double) count / total + "\t" + value, domainFile, Charsets.UTF_8);
+            Files.append("\n", domainFile, Charsets.UTF_8);
+          }
+          Files.append("\n", domainFile, Charsets.UTF_8);
+        }
+      }
+    }
+  }
+  
+  private void writeDistributions() throws IOException {
+    TypeManager typeManager = TypeManager.getInstance();
+    for (Entry<String, Set<Column<?>>> e : relations.entrySet()) {
+      Set<Column<?>> columns = e.getValue();
+      for (Column<?> col : columns) {
+        if (!col.isEnumerated()) {
+          // TODO write the distribution file
+          Parser<?> parser = typeManager.getParser("", col.getTable(), col.getColumn());
+          Histogram<?> distribution = col.getDistribution();
+          Map<?, Long> mostFrequent = Histograms.getMostFrequent(distribution);
+          double total = Double.valueOf(distribution.getTotalNumberOfValues());
+          
+          File distributionFile = new File(distributionDirectory + FILE_SEPARATOR + col.getTable() + "." + col.getColumn() + ".distribution");
+          Files.createParentDirs(distributionFile);
+          Files.touch(distributionFile);
+          Files.write("", distributionFile, Charsets.UTF_8);
+          Files.append ("# numberofexactvals: " + mostFrequent.size(), distributionFile, Charsets.UTF_8);
+          Files.append("\n", distributionFile, Charsets.UTF_8);
+          Files.append ("# numberofbins: " + (distribution.getNumberOfBuckets() - mostFrequent.size()), distributionFile, Charsets.UTF_8);
+          Files.append("\n", distributionFile, Charsets.UTF_8);
+          Files.append ("# nullprobability: " + col.getNumNulls() / total, distributionFile, Charsets.UTF_8);
+          Files.append("\n", distributionFile, Charsets.UTF_8);
+          for (Entry<?, Long> mf : mostFrequent.entrySet()) {
+            String value = parser.toString(mf.getKey());
+            Long count = mf.getValue();
+            Files.append(count / total + "\t" + value, distributionFile, Charsets.UTF_8);
+            Files.append("\n", distributionFile, Charsets.UTF_8);
+          }
+          for (Bucket<?> buck : distribution) {
+            if (!buck.getLowerBound().equals(buck.getUpperBound())) {
+              String lBound = parser.toString(buck.getLowerBound());
+              String uBound = parser.toString(buck.getUpperBound());
+              long count = buck.getFrequency();
+              Files.append(count / total + "\t" + lBound + "\t" + uBound, distributionFile, Charsets.UTF_8);
+              Files.append("\n", distributionFile, Charsets.UTF_8);
+            }
+          }
+          Files.append("\n", distributionFile, Charsets.UTF_8);
+        }
+      }
+    }
   }
 }

@@ -1,5 +1,6 @@
 package de.tu_berlin.dima.oligos;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Date;
@@ -23,6 +24,7 @@ import de.tu_berlin.dima.oligos.exception.ColumnDoesNotExistException;
 import de.tu_berlin.dima.oligos.exception.TypeNotSupportedException;
 import de.tu_berlin.dima.oligos.io.MyriadWriter;
 import de.tu_berlin.dima.oligos.stat.Column;
+import de.tu_berlin.dima.oligos.type.TypeManager;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.operator.CharOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.DateOperator;
@@ -58,28 +60,33 @@ public class Oligos {
     this.connector = connector;
   }
   
-  public ColumnProfiler<?> getProfiler(String table, String column)
+  public ColumnProfiler<?> getProfiler(String schema, String table, String column)
       throws SQLException, TypeNotSupportedException {
     ColumnProfiler<?> profiler = null;
+    TypeManager typeManager = TypeManager.getInstance();
     TypeInfo type = connector.getColumnType(table, column);
     String typeName = type.getTypeName().toLowerCase();
     if (typeName.equals("integer")) {
       Parser<Integer> p = IntegerParser.getInstance();
+      typeManager.registerColumn(schema, table, column, p);
       Operator<Integer> op = IntegerOperator.getInstance();
-      profiler = new ColumnProfiler<Integer>(connector, p, op, table, column);
+      profiler = new ColumnProfiler<Integer>(connector, p, op, table, column, typeName);
     } else if (typeName.equals("date")) {
       Parser<Date> p = DateParser.getInstance();
+      typeManager.registerColumn(schema, table, column, p);
       Operator<Date> op = DateOperator.getInstance();
-      profiler = new ColumnProfiler<Date>(connector, p, op, table, column);
+      profiler = new ColumnProfiler<Date>(connector, p, op, table, column, typeName);
     } else if (typeName.equals("decimal")) {
       Parser<BigDecimal> p = DecimalParser.getInstance();
+      typeManager.registerColumn(schema, table, column, p);
       Operator<BigDecimal> op = new DecimalOperator(type.getScale());
-      profiler = new ColumnProfiler<BigDecimal>(connector, p, op, table, column);
+      profiler = new ColumnProfiler<BigDecimal>(connector, p, op, table, column, typeName);
     } else if (typeName.equals("character")
         && (type.getLength() == 1)) {
       Parser<Character> p = new CharParser();
+      typeManager.registerColumn(schema, table, column, p);
       Operator<Character> op = new CharOperator();
-      profiler = new ColumnProfiler<Character>(connector, p, op, table, column);
+      profiler = new ColumnProfiler<Character>(connector, p, op, table, column, typeName);
     } else {
       LOGGER.warn("Could not profile " + table + "." + column);
       throw new TypeNotSupportedException(typeName, type.getLength());
@@ -87,14 +94,14 @@ public class Oligos {
     return profiler;
   }
 
-  public Column<?> profile(String table, String column)
+  public Column<?> profile(String schema, String table, String column)
       throws ColumnDoesNotExistException, SQLException, TypeNotSupportedException {
     if (!connector.checkColumn(table, column)) {
       // TODO Use log4j or throw exception
       throw new ColumnDoesNotExistException(table, column);
     }
     if (connector.hasStatistics(table, column)) {
-      ColumnProfiler<?> profiler = getProfiler(table, column);
+      ColumnProfiler<?> profiler = getProfiler(schema, table, column);
       return profiler.profile();
     } else {
       return null;
@@ -115,6 +122,8 @@ public class Oligos {
         String hostname = cmd.getOptionValue("hostname");
         String database = cmd.getOptionValue("database");
         int port = Integer.parseInt(cmd.getOptionValue("port"));
+        // TODO get this from user
+        String schema = "";
         String table = cmd.getOptionValue("table");
 
         // TODO delete this option
@@ -133,7 +142,7 @@ public class Oligos {
         Set<Column<?>> profiledColumns = Sets.newLinkedHashSet();
         for (String col : columns) {
           try {
-            Column<?> column = profiler.profile(table, col);
+            Column<?> column = profiler.profile(schema, table, col);
             if (column != null) {
               profiledColumns.add(column);
             }
@@ -149,8 +158,13 @@ public class Oligos {
         
         Map<String, Set<Column<?>>> relations = Maps.newHashMap();
         relations.put(table, profiledColumns);
-        MyriadWriter writer = new MyriadWriter(relations, "");
-        writer.write();
+        MyriadWriter writer = new MyriadWriter(relations, "/Users/carabolic/Abgelegt/oligos_out/new");
+        try {
+          writer.write();
+        } catch (IOException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
       }
     } catch (ParseException e) {
       formatter.printHelp(Oligos.class.getSimpleName(), OPTS);

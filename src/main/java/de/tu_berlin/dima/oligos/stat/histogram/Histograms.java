@@ -10,12 +10,7 @@ import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
 public abstract class Histograms {
 
-  public static <T> Histogram<T> combineHistograms(Histogram<T> hist,
-      Map<T, Long> mostFrequent, Operator<T> operator) {
-    return adaptHistogram(hist, mostFrequent, operator);
-  }
-  
-  public static <T> Histogram<T> adaptHistogram(Histogram<T> hist, Map<T, Long> mostFrequent, Operator<T> operator) {
+  public static <T> Histogram<T> combineHistograms(Histogram<T> hist, Map<T, Long> mostFrequent, Operator<T> operator) {
     Histogram<T> histogram = new CustomHistogram<T>(operator);
     // Make a deep copy to keep function side effect free
     mostFrequent = Maps.newHashMap(mostFrequent);
@@ -69,7 +64,6 @@ public abstract class Histograms {
       }
       histogram.add(bucket.getLowerBound(), bucket.getUpperBound(), bucket.getFrequency());
     }
-
     return histogram;
   }
 
@@ -82,7 +76,7 @@ public abstract class Histograms {
     }
     return elemsInRange;
   }
-  
+
   public static <T> boolean isInBucket(Bucket<T> bucket, T value, Operator<T> operator) {
     return isInBucket(bucket.getLowerBound(), bucket.getUpperBound(), value, operator);
   }
@@ -91,6 +85,16 @@ public abstract class Histograms {
       Operator<T> operator) {
     return operator.compare(lowerBound, value) <= 0
         && operator.compare(value, upperBound) <= 0;
+  }
+  
+  public static <T> Map<T, Long> getMostFrequent(Histogram<T> histogram) {
+    Map<T, Long> mostFrequent = Maps.newLinkedHashMap();
+    for (Bucket<T> buck : histogram) {
+      if (buck.getLowerBound().equals(buck.getUpperBound())) {
+        mostFrequent.put(buck.getLowerBound(), buck.getFrequency());
+      }
+    }
+    return mostFrequent;
   }
 
 }
