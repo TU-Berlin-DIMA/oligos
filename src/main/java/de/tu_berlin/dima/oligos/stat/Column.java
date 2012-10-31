@@ -3,8 +3,13 @@ package de.tu_berlin.dima.oligos.stat;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.Maps;
+
+import de.tu_berlin.dima.oligos.stat.histogram.CustomHistogram;
 import de.tu_berlin.dima.oligos.stat.histogram.Histogram;
 import de.tu_berlin.dima.oligos.type.util.Constraint;
+import de.tu_berlin.dima.oligos.type.util.operator.Operator;
+import de.tu_berlin.dima.oligos.type.util.operator.OperatorManager;
 
 public class Column<T> {
 
@@ -31,9 +36,10 @@ public class Column<T> {
     this.cardinality = cardinality;
     this.numNulls = numNulls;
     this.distribution = distribution;
-    this.mostFrequent = null;
+    this.mostFrequent = Maps.newHashMap();
   }
   
+  @SuppressWarnings("unchecked")
   public Column(final String table, final String column, final String type, Set<Constraint> constraints, T min, T max,
       long cardinality, long numNulls, Map<T, Long> mostFrequent) {
     this.table = table;
@@ -44,7 +50,7 @@ public class Column<T> {
     this.max = max;
     this.cardinality = cardinality;
     this.numNulls = numNulls;
-    this.distribution = null;
+    this.distribution = new CustomHistogram<T>((Operator<T>) OperatorManager.getInstance().getOperator("", table, column));
     this.mostFrequent = mostFrequent;
   }
   
@@ -85,7 +91,7 @@ public class Column<T> {
   }
   
   public boolean isEnumerated() {
-    return mostFrequent != null && distribution == null;
+    return !mostFrequent.isEmpty() && distribution.isEmpty();
   }
   
   public boolean isUnique() {
@@ -97,7 +103,7 @@ public class Column<T> {
   }
   
   public boolean hasDistribution() {
-    return distribution != null;
+    return !distribution.isEmpty();
   }
   
   public long getNumberOfValues() {

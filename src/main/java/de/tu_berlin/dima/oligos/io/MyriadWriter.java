@@ -18,24 +18,19 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
-import org.w3c.dom.Comment;
+import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.Text;
-
-import com.google.common.base.Charsets;
-import com.google.common.collect.Maps;
-import com.google.common.io.Files;
-
-import de.tu_berlin.dima.oligos.stat.Bucket;
+import org.w3c.dom.Node;
 import de.tu_berlin.dima.oligos.stat.Column;
-import de.tu_berlin.dima.oligos.stat.histogram.Histogram;
-import de.tu_berlin.dima.oligos.stat.histogram.Histograms;
-import de.tu_berlin.dima.oligos.type.TypeManager;
+import de.tu_berlin.dima.oligos.type.util.ColumnId;
+import de.tu_berlin.dima.oligos.type.util.Constraint;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
+import de.tu_berlin.dima.oligos.type.util.parser.ParserManager;
 
-public class MyriadWriter {
+public class MyriadWriter implements Writer {
   
+  private static final Logger LOGGER = Logger.getLogger(MyriadWriter.class);
   private static final char FILE_SEPARATOR = '/';
   @SuppressWarnings("serial")
   private static final Map<String, String> TYPE_MAPPING = new HashMap<String, String>(){{
@@ -44,334 +39,324 @@ public class MyriadWriter {
     put("date", "Date");
     put("character", "String");
   }};
-
-  private final String outputDirectory;
-  private final String domainDirectory;
-  private final String distributionDirectory;
-  private final Map<String, Set<Column<?>>> relations;
+  
+  private final String generatorName;
+  private final File outputDirectory;
   private final Document document;
-
-  private Map<String, Object> parameters;
-
-  public MyriadWriter(Map<String, Set<Column<?>>> relations, String outputDirectory) {
-    try {
+  private final Map<String, Set<Column<?>>> relations;
+  private final ParserManager parserManager;
+  private final Writer domainWriter;
+  private final Writer distributionWriter;
+  
+  public MyriadWriter(final Map<String, Set<Column<?>>> relations
+      , final File outputDirectory
+      , final String generatorName) {
+    this.generatorName = generatorName;
     this.outputDirectory = outputDirectory;
-    this.domainDirectory = outputDirectory + FILE_SEPARATOR + "domain";
-    this.distributionDirectory = outputDirectory + FILE_SEPARATOR
-        + "distribution";
+    this.document = createDocument();
     this.relations = relations;
-    this.document = createXmlDocument();
-    this.parameters = Maps.newHashMap();
-    } catch (ParserConfigurationException pce) {
-      throw new RuntimeException("");
-    }
+    this.parserManager = ParserManager.getInstance();
+    this.domainWriter = 
+        new DomainFileWriter(new File(outputDirectory, "domains")
+        , relations
+        , "domain");
+    this.distributionWriter =
+        new DistributionFileWriter(new File(outputDirectory, "distributions")
+        , relations
+        , "distribution");
+    createSkeleton();
   }
-
-  public void addParameter(String key, Object value) {
-    parameters.put(key, value);
-  }
-
-  public void write() throws IOException {
+  
+  private Document createDocument() {
     try {
-      // create folders
-      createDirectory(outputDirectory);
-      createDirectory(domainDirectory);
-      createDirectory(distributionDirectory);
-      
-      // create prototype xml document
-      Element root = document.createElement("generator_prototype");
-      
-      // write parameters to xml
-      Element params = document.createElement("paramaters");
-      createParameters(params);
-      root.appendChild(params);
-
-      // write function to xml
-      Element funcs = document.createElement("functions");
-      createFunctions(funcs);
-      root.appendChild(funcs);
-      
-      // write enum_sets to xml
-      Element enums = document.createElement("enum_sets");
-      createEnumSets(enums);
-      root.appendChild(enums);
-      
-      // write record sequences
-      Element recs = document.createElement("record_sequences");
-      createRecordSequences(recs);
-      root.appendChild(recs);
-
-      // transfrom xml to String
-      document.appendChild(root);      
-      writeXml(document);
-      writeDomains();
-      writeDistributions();
-    } catch (TransformerException tfe) {
-      tfe.printStackTrace(System.err);
+      DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+      DocumentBuilder builder;
+      builder = factory.newDocumentBuilder();
+      return builder.newDocument();
+    } catch (ParserConfigurationException e) {
+      throw new RuntimeException();
     }
-  }
-
-  private void createDirectory(String directory) {
-
-  }
-
-  public static Document createXmlDocument()
-      throws ParserConfigurationException {
-    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-    DocumentBuilder builder;
-    builder = factory.newDocumentBuilder();
-    return builder.newDocument();
-  }
-
-  private void createParameters(Element params) {
-    for (Entry<String, Object> e : parameters.entrySet()) {
-      Element param = document.createElement("parameter");
-      param.setAttribute("key", e.getKey());
-      Text text = document.createTextNode(e.getValue().toString());
-      param.appendChild(text);
-      params.appendChild(param);
-    }
-  }
-
-  private void createFunctions(Element funcs) {
-    for (Entry<String, Set<Column<?>>> e : relations.entrySet()) {
-      String table = e.getKey();
-      Set<Column<?>> columns = e.getValue();
-      Comment comment = document.createComment("functions for " + table);
-      funcs.appendChild(comment);
-      for (Column<?> col : columns) {
-        Element func = document.createElement("function");
-        func.setAttribute("key", "Pr[" + col.getName() + "]");
-        // Functions for columns with unique values
-        if (col.isUnique()) {
-          func.setAttribute("type", "uniform_probability");
-          Element argMin = document.createElement("argument");
-          Element argMax = document.createElement("argument");
-          argMin.setAttribute("key", "x_min");
-          argMin.setAttribute("value", col.getMin().toString());
-          argMin.setAttribute("type", getMyriadType(col.getType()));
-          argMax.setAttribute("key", "x_max");
-          argMax.setAttribute("value", col.getMax().toString());
-          argMax.setAttribute("type", getMyriadType(col.getType()));
-          func.appendChild(argMin);
-          func.appendChild(argMax);
-        } 
-        // Functions for columns with "enumerated" values
-        else if (col.isEnumerated()) {
-          func.setAttribute("type", "combined_probability[Enum]");
-          Element argPath = document.createElement("argument");
-          argPath.setAttribute("key", "path");
-          argPath.setAttribute("type", "String");
-          argPath.setAttribute("value", col.getName() + ".domain");
-          func.appendChild(argPath);
-        } 
-        // Functions for "ordinary" columns with full statistics 
-        else {
-          func.setAttribute("type", "combined_probability[" + getMyriadType(col.getType()) + "]");
-          Element argPath = document.createElement("argument");
-          argPath.setAttribute("key", "path");
-          argPath.setAttribute("type", "String");
-          argPath.setAttribute("value", col.getName() + ".distribution");
-          func.appendChild(argPath);
-        }
-        funcs.appendChild(func);
-      }
-    }
-  }
-
-  private void createEnumSets(Element enums) {
-    for (Entry<String, Set<Column<?>>> e : relations.entrySet()) {
-      String table = e.getKey();
-      Set<Column<?>> columns = e.getValue();
-      Comment comment = document.createComment("enumerated attributes for " + table);
-      enums.appendChild(comment);
-      for (Column<?> col : columns) {
-        if (col.isEnumerated()) {
-          Element enumSet = document.createElement("enum_set");
-          enumSet.setAttribute("key", col.getName());
-          Element argPath = document.createElement("argument");
-          argPath.setAttribute("key", "path");
-          argPath.setAttribute("type", "String");
-          argPath.setAttribute("value", domainDirectory + FILE_SEPARATOR
-              + col.getName() + ".domain");
-          enumSet.appendChild(argPath);
-          enums.appendChild(enumSet);
-        }
-      }
-    }
-  }
-
-  private void createRecordSequences(Element recs) {
-    for (Entry<String, Set<Column<?>>> e : relations.entrySet()) {
-      long tableCol = 0l;
-      String table = e.getKey();
-      Set<Column<?>> columns = e.getValue();
-      Comment comment = document.createComment("record sequence for " + table);
-      recs.appendChild(comment);
-      Element rand = document.createElement("random_sequence");
-      rand.setAttribute("key", table);
-      Element recType = document.createElement("record_type");
-      for (Column<?> col : columns) {
-        Element field = document.createElement("field");
-        field.setAttribute("name", col.getColumn());
-        if (col.isEnumerated()) {
-          field.setAttribute("type", "Enum");
-          field.setAttribute("enumref", col.getName());
-        } else {
-          field.setAttribute("type", getMyriadType(col.getType()));
-        }
-        recType.appendChild(field);
-        tableCol = Math.max(col.getNumberOfValues(), tableCol);
-      }
-      rand.appendChild(recType);
-      
-      Element hydrs = document.createElement("hydrators");
-      for (Column<?> col : columns) {
-        Element hyd = document.createElement("hydrator");
-        hyd.setAttribute("key", "set_" + col.getColumn());
-        hyd.setAttribute("type", "simple_clustered_hydrator");
-        Element argField = document.createElement("argument");
-        argField.setAttribute("key", "field");
-        argField.setAttribute("type", "field_ref");
-        argField.setAttribute("ref", col.getColumn());
-        hyd.appendChild(argField);
-        Element argProb = document.createElement("argument");
-        argProb.setAttribute("key", "probability");
-        argProb.setAttribute("type", "function_ref");
-        argProb.setAttribute("ref", "Pr[" + col.getName() + "]");
-        hyd.appendChild(argProb);
-        hydrs.appendChild(hyd);
-      }
-      rand.appendChild(hydrs);
-      
-      Element hydrPlan = document.createElement("hydratorPlan");
-      for (Column<?> col : columns) {
-        Element hydrRef = document.createElement("hydrator_ref");
-        hydrRef.setAttribute("ref", col.getName());
-        hydrPlan.appendChild(hydrRef);
-      }
-      rand.appendChild(hydrPlan);
-      createCardinalityEstimator(rand, tableCol);
-      createGeneratorTasks(rand, table);
-      recs.appendChild(rand);
-    }
-  }
-
-  private void createGeneratorTasks(Element rand, String table) {
-    Element genTasks = document.createElement("generator_tasks");
-    Element genTask = document.createElement("generator_task");
-    genTask.setAttribute("key", table + ".generate");
-    genTask.setAttribute("type", "partitioned_iterator");
-    genTasks.appendChild(genTask);
-    rand.appendChild(genTasks);
   }
   
-  private void createCardinalityEstimator(Element rand, long cardinality) {
-    Element cardEstimator = document.createElement("cardinality_estimator");
-    cardEstimator.setAttribute("type", "linear_scale_estimator");
-    Element cardEstArg = document.createElement("argument");
-    cardEstArg.setAttribute("key", "base_cardinality");
-    cardEstArg.setAttribute("type", "String");
-    cardEstArg.setAttribute("value", cardinality + "");
-    cardEstimator.appendChild(cardEstArg);
-    rand.appendChild(cardEstimator);
+  public void write() throws IOException {
+    Node parameters = document.getElementsByTagName("parameters").item(0);
+    Node functions = document.getElementsByTagName("functions").item(0);
+    Node enumSets = document.getElementsByTagName("enum_sets").item(0);
+    Node recordSequences = document.getElementsByTagName("record_sequences").item(0);
+    for (Entry<String, Set<Column<?>>> relEntry : relations.entrySet()) {
+      String table = relEntry.getKey();
+      long tableCardinality = calculateTableCardinality(relEntry.getValue());
+      Element parameter = createParameter(table, tableCardinality);
+      parameters.appendChild(parameter);
+      Element randomSequence = createRandomSequence(table);
+      Node recordType = randomSequence.getElementsByTagName("record_type").item(0);
+      Node setterChain = randomSequence.getElementsByTagName("setter_chain").item(0);
+      recordSequences.appendChild(randomSequence);
+      for (Column<?> colStat : relEntry.getValue()) {
+        String column = colStat.getColumn();
+        ColumnId columnId = new ColumnId("", table, column);
+        // create functions for current column
+        Element func = createFunction(columnId, colStat);
+        functions.appendChild(func);
+        // create enum_set for column
+        Element enumSet = createEnumSet(columnId, colStat);
+        if (enumSet != null) {
+          enumSets.appendChild(enumSet);
+        }
+        // create record types for current column
+        Element field = createRecordType(columnId, colStat);
+        recordType.appendChild(field);
+        // create setters for current column
+        Element setter = createSetter(columnId, colStat);
+        setterChain.appendChild(setter);
+      }
+    }
+    try {
+      writeXml();
+    } catch (TransformerException e) {
+      LOGGER.error("Error while transforming XML document.", e);
+    }
+    domainWriter.write();
+    distributionWriter.write();
   }
   
-  private String getMyriadType(String internalType) {
-    return TYPE_MAPPING.get(internalType);
+  /**
+   * Generates a XML skeleton as follows:<br />
+   * <code><pre>
+   * &lt;generator_prototype&gt;
+   *   &lt;parameters /&gt;
+   *   &lt;functions /&gt;
+   *   &lt;enum_sets /&gt;
+   *   &lt;record_sequences /&gt;
+   * &lt;/generator_prototype&gt;
+   * </pre></code>
+   */
+  private void createSkeleton() {
+    Element generator_prototype = document.createElement("generator_prototype");
+    generator_prototype.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
+    generator_prototype.setAttribute("xmlns", "http://www.dima.tu-berlin.de/myriad/prototype");
+    Element parameters = document.createElement("parameters");
+    generator_prototype.appendChild(parameters);
+    Element functions = document.createElement("functions");
+    generator_prototype.appendChild(functions);
+    Element enum_sets = document.createElement("enum_sets");
+    generator_prototype.appendChild(enum_sets);
+    Element record_sequences = document.createElement("record_sequences");
+    generator_prototype.appendChild(record_sequences);
+    document.appendChild(generator_prototype);
   }
   
-  private void writeXml(Document document) throws TransformerException, IOException {
-    // Create xml file and parent folders
-    File xmlFile = new File(outputDirectory + FILE_SEPARATOR + "prototype.xml");
-    Files.createParentDirs(xmlFile);
-    Files.touch(xmlFile);
-
+  private Element createParameter(String key, long value) {
+    Element parameter = document.createElement("parameter");
+    parameter.setAttribute("key", getBaseCardinalityParam(key, false));
+    parameter.setTextContent(String.valueOf(value));    
+    return parameter;
+  }
+  
+  private Element createFunction(ColumnId columnId, Column<?> columnStat) {
+    Parser<?> parser = parserManager.getParser(columnId);
+    Element func = document.createElement("function");
+    String funcName = getFunctionKey(columnId);
+    String funcType = "";
+    String colType = getMyriadType(columnStat.getType());
+    if (columnStat.isUnique()) {
+      funcType = "uniform_probability[" + colType + "]";
+      String min = parser.toString(columnStat.getMin());
+      //String max = parser.toString(columnStat.getMax());
+      String max = "${%customer.sequence.cardinality% + " + min + "}";
+      Element argMin = document.createElement("argument");
+      argMin.setAttribute("key", "x_min");
+      argMin.setAttribute("type", colType);
+      argMin.setAttribute("value", min);
+      Element argMax = document.createElement("argument");
+      argMax.setAttribute("key", "x_max");
+      argMax.setAttribute("type", colType);
+      argMax.setAttribute("value", max);
+      func.appendChild(argMin);
+      func.appendChild(argMax);
+    } else if (columnStat.isEnumerated()) {
+      funcType = "combined_probability[Enum]";
+      Element arg = document.createElement("argument");
+      arg.setAttribute("key", "path");
+      arg.setAttribute("type", "String");
+      arg.setAttribute("value", getDistributionPath(columnId));
+      func.appendChild(arg);
+    } else {
+      funcType = "combined_probability[" + colType + "]";
+      Element arg = document.createElement("argument");
+      arg.setAttribute("key", "path");
+      arg.setAttribute("type", "String");
+      arg.setAttribute("value", getDistributionPath(columnId));
+      func.appendChild(arg);
+    }
+    func.setAttribute("key", funcName);
+    func.setAttribute("type", funcType);
+    return func;
+  }
+  
+  private Element createEnumSet(ColumnId columnId, Column<?> colStat) {
+    if (colStat.isEnumerated()) {
+      Element enumSet = document.createElement("enum_set");
+      enumSet.setAttribute("key", columnId.getQualifiedName());
+      Element arg = document.createElement("argument");
+      arg.setAttribute("key", "path");
+      arg.setAttribute("type", "String");
+      arg.setAttribute("value", getDomainPath(columnId));
+      enumSet.appendChild(arg);
+      return enumSet;
+    } else {
+      return null;
+    }
+  }
+  
+  private Element createRandomSequence(String table) {
+    Element randomSequence = document.createElement("random_sequence");
+    randomSequence.setAttribute("key", table.toLowerCase());
+    Element recordType = document.createElement("record_type");
+    randomSequence.appendChild(recordType);
+    Element setterChain = document.createElement("setter_chain");
+    randomSequence.appendChild(setterChain);
+    Element cardinalityEstimator = document.createElement("cardinality_estimator");
+    cardinalityEstimator.setAttribute("type", "linear_scale_estimator");
+    Element cardArg = document.createElement("argument");
+    cardArg.setAttribute("key", "base_cardinality");
+    cardArg.setAttribute("type", "I64u");
+    cardArg.setAttribute("value", getBaseCardinalityParam(table, true));
+    cardinalityEstimator.appendChild(cardArg);
+    randomSequence.appendChild(cardinalityEstimator);
+    Element sequenceIterator = document.createElement("sequence_iterator");
+    sequenceIterator.setAttribute("type", "partitioned_iterator");
+    randomSequence.appendChild(sequenceIterator);
+    return randomSequence;
+  }
+  
+  private Element createRecordType(ColumnId columnId, Column<?> colStat) {
+    Element field = document.createElement("field");
+    field.setAttribute("name", columnId.getColumn());
+    if (colStat.isEnumerated()) {
+      field.setAttribute("type", "Enum");
+      field.setAttribute("enumref", columnId.getQualifiedName());
+    } else {
+      field.setAttribute("type", getMyriadType(colStat.getType()));
+    }
+    return field;
+  }
+  
+  private Element createSetter(ColumnId columnId, Column<?> colStat) {
+    Element setter = document.createElement("setter");
+    setter.setAttribute("key", getSetterKey(columnId));
+    setter.setAttribute("type", "field_setter");
+    Element fieldArg = document.createElement("argument");
+    fieldArg.setAttribute("key", "field");
+    fieldArg.setAttribute("type", "field_ref");
+    fieldArg.setAttribute("ref", getFieldRef(columnId));
+    setter.appendChild(fieldArg);
+    // create clustered value provider for all key columns
+    if (colStat.getConstraints().contains(Constraint.PRIMARY_KEY)) {
+      Element clusteredValueProvider = document.createElement("argument");
+      clusteredValueProvider.setAttribute("key", "value");
+      clusteredValueProvider.setAttribute("type", "clustered_value_provider");
+      Element probability = document.createElement("argument");
+      probability.setAttribute("key", "probability");
+      probability.setAttribute("type", "function_ref");
+      probability.setAttribute("ref", getFunctionKey(columnId));
+      clusteredValueProvider.appendChild(probability);
+      Element cardinality = document.createElement("argument");
+      cardinality.setAttribute("key", "cardinality");
+      cardinality.setAttribute("type", "const_range_provider");
+      Element min = document.createElement("argument");
+      min.setAttribute("key", "min");
+      min.setAttribute("type", "I64u");
+      min.setAttribute("value", String.valueOf(0));
+      cardinality.appendChild(min);
+      Element max = document.createElement("argument");
+      max.setAttribute("key", "max");
+      max.setAttribute("type", "I64u");
+      max.setAttribute("value", "%" + columnId.getTable() + ".sequence.cardinality%");
+      cardinality.appendChild(max);
+      clusteredValueProvider.appendChild(cardinality);
+      setter.appendChild(clusteredValueProvider);
+    }
+    // create random value provider for all non key columns
+    else {
+      Element randomValueProvider = document.createElement("argument");
+      randomValueProvider.setAttribute("key", "value");
+      randomValueProvider.setAttribute("type", "random_value_provider");
+      Element probability = document.createElement("argument");
+      probability.setAttribute("key", "probability");
+      probability.setAttribute("type", "function_ref");
+      probability.setAttribute("ref", getFunctionKey(columnId));
+      randomValueProvider.appendChild(probability);
+      setter.appendChild(randomValueProvider);
+    }
+    return setter;
+  }
+  
+  private void writeXml() throws TransformerException, IOException {
+    // create XML file and parent folders
+    File xmlFile = new File(outputDirectory, generatorName + "-prototype.xml");
+    xmlFile.mkdirs();
+    xmlFile.delete();
+    xmlFile.createNewFile();
+    
     // set up a transformer
     TransformerFactory transfac = TransformerFactory.newInstance();
     Transformer trans = transfac.newTransformer();
-    //trans.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
-    trans.setOutputProperty(OutputKeys.STANDALONE, "yes");
     trans.setOutputProperty(OutputKeys.INDENT, "yes");
     trans.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
 
-    // create string from xml tree
+    // create string from XML tree
+    document.setXmlStandalone(true);
     FileWriter fw = new FileWriter(xmlFile);
     StreamResult result = new StreamResult(fw);
     DOMSource source = new DOMSource(document);
     trans.transform(source, result);
   }
   
-  private void writeDomains() throws IOException {
-    for (Entry<String, Set<Column<?>>> e : relations.entrySet()) {
-      Set<Column<?>> columns = e.getValue();
-      for (Column<?> col : columns) {
-        if (col.isEnumerated()) {
-          // TODO write the domain file
-          File domainFile = new File(domainDirectory + FILE_SEPARATOR + col.getTable() + "." + col.getColumn());
-          Files.createParentDirs(domainFile);
-          Files.touch(domainFile);
-          Files.write("", domainFile, Charsets.UTF_8);
-          Map<?, Long> domain = col.getDomain();
-          long total = col.getNumberOfValues();
-          Files.append ("# numberofexactvals: " + domain.size(), domainFile, Charsets.UTF_8);
-          Files.append("\n", domainFile, Charsets.UTF_8);
-          Files.append ("# numberofbins: 0", domainFile, Charsets.UTF_8);
-          Files.append("\n", domainFile, Charsets.UTF_8);
-          Files.append ("# nullprobability: " + col.getNumNulls() / (double) total, domainFile, Charsets.UTF_8);
-          Files.append("\n", domainFile, Charsets.UTF_8);
-          for (Entry<?, Long> d : domain.entrySet()) {
-            String value = d.getKey().toString();
-            long count = d.getValue();
-            Files.append ((double) count / total + "\t" + value, domainFile, Charsets.UTF_8);
-            Files.append("\n", domainFile, Charsets.UTF_8);
-          }
-          Files.append("\n", domainFile, Charsets.UTF_8);
-        }
-      }
+  private long calculateTableCardinality(Set<Column<?>> relation) {
+    long cardinality = 0l;
+    for (Column<?> column : relation) {
+      cardinality = Math.max(cardinality, column.getCardinality());
     }
+    return cardinality;
   }
   
-  private void writeDistributions() throws IOException {
-    TypeManager typeManager = TypeManager.getInstance();
-    for (Entry<String, Set<Column<?>>> e : relations.entrySet()) {
-      Set<Column<?>> columns = e.getValue();
-      for (Column<?> col : columns) {
-        if (!col.isEnumerated()) {
-          // TODO write the distribution file
-          Parser<?> parser = typeManager.getParser("", col.getTable(), col.getColumn());
-          Histogram<?> distribution = col.getDistribution();
-          Map<?, Long> mostFrequent = Histograms.getMostFrequent(distribution);
-          double total = Double.valueOf(distribution.getTotalNumberOfValues());
-          
-          File distributionFile = new File(distributionDirectory + FILE_SEPARATOR + col.getTable() + "." + col.getColumn() + ".distribution");
-          Files.createParentDirs(distributionFile);
-          Files.touch(distributionFile);
-          Files.write("", distributionFile, Charsets.UTF_8);
-          Files.append ("# numberofexactvals: " + mostFrequent.size(), distributionFile, Charsets.UTF_8);
-          Files.append("\n", distributionFile, Charsets.UTF_8);
-          Files.append ("# numberofbins: " + (distribution.getNumberOfBuckets() - mostFrequent.size()), distributionFile, Charsets.UTF_8);
-          Files.append("\n", distributionFile, Charsets.UTF_8);
-          Files.append ("# nullprobability: " + col.getNumNulls() / total, distributionFile, Charsets.UTF_8);
-          Files.append("\n", distributionFile, Charsets.UTF_8);
-          for (Entry<?, Long> mf : mostFrequent.entrySet()) {
-            String value = parser.toString(mf.getKey());
-            Long count = mf.getValue();
-            Files.append(count / total + "\t" + value, distributionFile, Charsets.UTF_8);
-            Files.append("\n", distributionFile, Charsets.UTF_8);
-          }
-          for (Bucket<?> buck : distribution) {
-            if (!buck.getLowerBound().equals(buck.getUpperBound())) {
-              String lBound = parser.toString(buck.getLowerBound());
-              String uBound = parser.toString(buck.getUpperBound());
-              long count = buck.getFrequency();
-              Files.append(count / total + "\t" + lBound + "\t" + uBound, distributionFile, Charsets.UTF_8);
-              Files.append("\n", distributionFile, Charsets.UTF_8);
-            }
-          }
-          Files.append("\n", distributionFile, Charsets.UTF_8);
-        }
-      }
-    }
+  private String getMyriadType(String internalType) {
+    return TYPE_MAPPING.get(internalType);
+  }
+  
+  private String getBaseCardinalityParam(String table, boolean isRef) {
+    String param = table.toLowerCase() + ".sequence.base_cardinality";
+    return isRef ? ("%" + param + "%") : param;
+  }
+  
+  private String getFunctionKey(ColumnId column) {
+    return "Pr[" + column.getQualifiedName() + "]";
+  }
+  
+  private String getDistributionPath(ColumnId column) {
+    return "${%ENV.config-dir% + \"" + getRelativeDistributionPath(column) + "\"}";
+  }
+  
+  private String getRelativeDistributionPath(ColumnId columnId) {
+    return FILE_SEPARATOR +  "distributions" + FILE_SEPARATOR
+        + columnId.getQualifiedName(FILE_SEPARATOR) + ".distribution";
+  }
+  
+  private String getDomainPath(ColumnId column) {
+    return "${%ENV.config-dir% + \"" + getRelativeDomainPath(column) + "\"}";
+  }
+  
+  private String getRelativeDomainPath(ColumnId columnId) {
+    return FILE_SEPARATOR +  "domains" + FILE_SEPARATOR
+        + columnId.getQualifiedName(FILE_SEPARATOR) + ".domain";
+  }
+  
+  private String getSetterKey(ColumnId columnId) {
+    return "set_" + columnId.getColumn();
+  }
+  
+  private String getFieldRef(ColumnId columnId) {
+    return columnId.getTable() + ":" + columnId.getColumn();
   }
 }

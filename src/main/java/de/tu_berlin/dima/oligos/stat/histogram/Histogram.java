@@ -33,4 +33,6 @@ public interface Histogram<T> extends Distribution<T>, Iterable<Bucket<T>> {
 
   public List<Long> getFrequencies();
 
+  public boolean isEmpty();
+
 }

@@ -71,6 +71,11 @@ public abstract class AbstractHistogram<T> implements Histogram<T> {
   public abstract List<Long> getFrequencies();
   
   @Override
+  public boolean isEmpty() {
+    return getFrequencies().isEmpty();
+  }
+  
+  @Override
   public String toString() {
     StringBuilder strBld = new StringBuilder();
     for (Bucket<T> bucket : this) {
@@ -86,5 +91,5 @@ public abstract class AbstractHistogram<T> implements Histogram<T> {
     }
     return strBld.toString();
   }
-
+  
 }
