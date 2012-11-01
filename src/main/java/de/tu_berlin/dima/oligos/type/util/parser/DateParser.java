@@ -9,21 +9,6 @@ public class DateParser implements Parser<Date> {
   private final static String DEFAULT_INPUT_FORMAT = "yyyy-MM-dd";
   private final static String DEFAULT_OUTPUT_FORMAT = "yyyy-MM-dd";
   
-  private static boolean isInstantiated = false;
-  private static DateParser instance = null;
-
-  private DateParser() {};
-  
-  public static synchronized DateParser getInstance() {
-    if (isInstantiated) {
-      return instance;
-    } else {
-      isInstantiated = true;
-      instance = new DateParser();
-      return instance;
-    }
-  }
-  
   @Override
   public Date fromString(String value) {
     Date date = new java.util.Date(0);

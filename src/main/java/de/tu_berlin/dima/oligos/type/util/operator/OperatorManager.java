@@ -8,16 +8,10 @@ import de.tu_berlin.dima.oligos.type.util.ColumnId;
 
 public class OperatorManager {
 
-  private static final OperatorManager INSTANCE = new OperatorManager();
-  
   private final Map<ColumnId, Operator<?>> operators;
   
-  private OperatorManager() {
+  public OperatorManager() {
     this.operators = Maps.newHashMap();
-  }
-  
-  public static OperatorManager getInstance() {
-    return INSTANCE;
   }
   
   public void register(String schema, String table, String column, Operator<?> operator) {

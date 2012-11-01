@@ -23,7 +23,7 @@ public class QuantileHistogramTest {
 
   @Before
   public void setUp() throws Exception {
-    operator = IntegerOperator.getInstance();
+    operator = new IntegerOperator();
     histogram = new QuantileHistogram<Integer>(0, operator);
     for (int i = 0; i < BOUNDARIES.length; i++) {
       histogram.addBound(BOUNDARIES[i], FREQUENCIES[i]);

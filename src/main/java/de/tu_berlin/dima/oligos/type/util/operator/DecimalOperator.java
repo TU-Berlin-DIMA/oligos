@@ -26,7 +26,7 @@ public class DecimalOperator implements Operator<BigDecimal> {
 
   @Override
   public BigDecimal increment(BigDecimal value, BigDecimal step) {
-    throw new UnsupportedOperationException();
+    return value.add(step).setScale(scale, RoundingMode.HALF_UP);
   }
 
   @Override

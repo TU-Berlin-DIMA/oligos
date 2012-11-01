@@ -71,19 +71,19 @@ public class Oligos {
     TypeInfo type = connector.getColumnType(table, column);
     String typeName = type.getTypeName().toLowerCase();
     if (typeName.equals("integer")) {
-      Parser<Integer> p = IntegerParser.getInstance();
-      Operator<Integer> op = IntegerOperator.getInstance();
+      Parser<Integer> p = new IntegerParser();
+      Operator<Integer> op = new IntegerOperator();
       parserManager.register(schema, table, column, p);
       operatorManager.register(schema, table, column, op);
       profiler = new ColumnProfiler<Integer>(connector, p, op, table, column, typeName);
     } else if (typeName.equals("date")) {
-      Parser<Date> p = DateParser.getInstance();
-      Operator<Date> op = DateOperator.getInstance();
+      Parser<Date> p = new DateParser();
+      Operator<Date> op = new DateOperator();
       parserManager.register(schema, table, column, p);
       operatorManager.register(schema, table, column, op);
       profiler = new ColumnProfiler<Date>(connector, p, op, table, column, typeName);
     } else if (typeName.equals("decimal")) {
-      Parser<BigDecimal> p = DecimalParser.getInstance();
+      Parser<BigDecimal> p = new DecimalParser();
       Operator<BigDecimal> op = new DecimalOperator(type.getScale());
       parserManager.register(schema, table, column, p);
       operatorManager.register(schema, table, column, op);

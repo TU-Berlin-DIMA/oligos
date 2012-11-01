@@ -6,28 +6,31 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class IntegerOperatorTest {
+  
+  private Operator<Integer> operator;
 
   @Before
   public void setUp() throws Exception {
+    this.operator = new IntegerOperator();
   }
 
   @Test
-  public void testIncrementInteger() {
+  public void testIncrement() {
     fail("Not yet implemented");
   }
 
   @Test
-  public void testIncrementIntegerInteger() {
+  public void testIncrementStep() {
     fail("Not yet implemented");
   }
 
   @Test
-  public void testDecrementInteger() {
+  public void testDecrement() {
     fail("Not yet implemented");
   }
 
   @Test
-  public void testDecrementIntegerInteger() {
+  public void testDecrementStep() {
     fail("Not yet implemented");
   }
 

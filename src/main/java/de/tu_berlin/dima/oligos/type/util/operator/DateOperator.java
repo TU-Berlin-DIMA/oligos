@@ -7,24 +7,11 @@ import org.joda.time.DateTime;
 import org.joda.time.Days;
 
 public class DateOperator implements Operator<Date> {
-  
-  private static boolean isInstantiated = false;
-  private static DateOperator instance = null;
-  
+
   private final Calendar calendar;
   
-  private DateOperator() {
+  public DateOperator() {
     this.calendar = Calendar.getInstance();
-  }
-  
-  public static synchronized DateOperator getInstance() {
-    if (isInstantiated) {
-      return instance;
-    } else {
-      isInstantiated = true;
-      instance = new DateOperator();
-      return instance;
-    }
   }
 
   @Override

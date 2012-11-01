@@ -1,21 +1,6 @@
 package de.tu_berlin.dima.oligos.type.util.operator;
 
 public class IntegerOperator implements Operator<Integer> {
-  
-  private static boolean isInstantiated = false;
-  private static IntegerOperator instance = null;
-  
-  private IntegerOperator() {}
-  
-  public static synchronized IntegerOperator getInstance() {
-    if (isInstantiated) {
-      return instance;
-    } else {
-      isInstantiated = true;
-      instance = new IntegerOperator();
-      return instance;
-    }
-  }
 
   @Override
   public Integer increment(Integer value) {
