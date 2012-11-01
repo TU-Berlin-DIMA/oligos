@@ -163,7 +163,7 @@ public class MyriadWriter implements Writer {
       funcType = "uniform_probability[" + colType + "]";
       String min = parser.toString(columnStat.getMin());
       //String max = parser.toString(columnStat.getMax());
-      String max = "${%customer.sequence.cardinality% + " + min + "}";
+      String max = "${%" + columnId.getTable() + ".sequence.cardinality% + " + min + "}";
       Element argMin = document.createElement("argument");
       argMin.setAttribute("key", "x_min");
       argMin.setAttribute("type", colType);
