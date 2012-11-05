@@ -1,4 +1,4 @@
-package de.tu_berlin.dima.oligos.db;
+package de.tu_berlin.dima.oligos.db.db2;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -12,12 +12,17 @@ import java.util.Set;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import de.tu_berlin.dima.oligos.db.TableConnector;
 import de.tu_berlin.dima.oligos.type.util.Constraint;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 
-public class DB2Connector {
+public class DB2Connector implements TableConnector {
   
   private final static String JDBC_STRING = "jdbc:db2://%s:%d/%s";
+  private final static String TABLE_QUERY = 
+      "SELECT card" +
+      "FROM   SYSSTAT.TABLES" +
+      "WHERE  TABSCHEMA = ? AND TABNAME = ?";
   private final static String TYPE_QUERY =
       "SELECT typename, length, scale " +
       "FROM   SYSCAT.COLUMNS " +
