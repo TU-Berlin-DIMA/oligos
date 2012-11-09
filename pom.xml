@@ -4,7 +4,7 @@
 
   <groupId>com.myriad-toolkit</groupId>
   <artifactId>oligos</artifactId>
-  <version>0.2</version>
+  <version>0.3</version>
   <packaging>jar</packaging>
 
   <name>oligos</name>
@@ -69,6 +69,12 @@
       <groupId>net.sf.jgrapht</groupId>
 	  <artifactId>jgrapht</artifactId>
 	  <version>0.8.3</version>
+    </dependency>
+    <dependency>
+        <groupId>org.javatuples</groupId>
+        <artifactId>javatuples</artifactId>
+        <version>1.2</version>
+        <scope>compile</scope>
     </dependency>
   </dependencies>
   
