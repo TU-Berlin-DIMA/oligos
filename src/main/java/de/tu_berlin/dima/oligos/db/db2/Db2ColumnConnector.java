@@ -4,23 +4,18 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Set;
-
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import de.tu_berlin.dima.oligos.db.ColumnConnector;
 import de.tu_berlin.dima.oligos.db.JdbcConnector;
 import de.tu_berlin.dima.oligos.exception.ColumnDoesNotExistException;
+import de.tu_berlin.dima.oligos.type.util.ColumnId;
 import de.tu_berlin.dima.oligos.type.util.Constraint;
-import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 
 public class Db2ColumnConnector<T> implements ColumnConnector<T> {
   
-  private final static String TYPE_QUERY =
-      "SELECT typename, length, scale " +
-      "FROM   SYSCAT.COLUMNS " +
-      "WHERE  tabschema = ? AND tabname = ? AND colname = ?";
   private final static String ENUMERATED_QUERY =
       "SELECT R.num_most_frequent, S.colcard " +
       "FROM   (SELECT COUNT(*) as num_most_frequent " +
@@ -58,6 +53,11 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
   private final String table;
   private final String column;
   private final Parser<T> parser;
+  
+  public Db2ColumnConnector(final JdbcConnector jdbcConnector, final ColumnId columnId
+      , final Parser<T> parser) {
+    this(jdbcConnector, columnId.getSchema(), columnId.getTable(), columnId.getColumn(), parser);
+  }
 
   public Db2ColumnConnector(final JdbcConnector jdbcConnector, final String schema
       , final String table, final String column, final Parser<T> parser) {
@@ -74,19 +74,6 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
     if (result.next()) {
       long card = result.getLong("COLCARD");
       return (card != -1) ? true : false; 
-    } else {
-      throw new ColumnDoesNotExistException(schema, table, column);
-    }
-  }
-
-  @Override
-  public TypeInfo getType() throws SQLException {
-    ResultSet result = connector.executeQuery(TYPE_QUERY, schema, table, column);
-    if (result.next()) {
-      String typeName = result.getString("typename");
-      int length = result.getInt("length");
-      int scale = result.getInt("scale");
-      return new TypeInfo(typeName, length, scale);
     } else {
       throw new ColumnDoesNotExistException(schema, table, column);
     }
@@ -156,14 +143,38 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
     }
   }
 
+  public T getMin() throws SQLException {
+    ResultSet result = connector.executeQuery(DOMAIN_QUERY, schema, table, column);
+    if (result.next()) {
+      T min = parser.fromString(result.getString("low2key"));
+      return min;
+    } else {
+      throw new ColumnDoesNotExistException(schema, table, column);
+    }
+  }
+
+  public T getMax() throws SQLException {
+    ResultSet result = connector.executeQuery(DOMAIN_QUERY, schema, table, column);
+    if (result.next()) {
+      T max = parser.fromString(result.getString("high2key"));
+      return max;
+    } else {
+      throw new ColumnDoesNotExistException(schema, table, column);
+    }
+  }
+
   @Override
   public Map<T, Long> getMostFrequentValues() throws SQLException {
     Map<T, Long> mostFrequentValues = Maps.newLinkedHashMap();
-    ResultSet result = connector.executeQuery(MOST_FREQUENT_QUERY, schema, table, column);
+    ResultSet result = connector.executeQuery(MOST_FREQUENT_QUERY, schema,
+        table, column);
     while (result.next()) {
-      T value = parser.fromString(result.getString("colvalue"));
-      long count = result.getLong("valcount");
-      mostFrequentValues.put(value, count);
+      String colvalue = result.getString("colvalue");
+      if (colvalue != null) {
+        T value = parser.fromString(colvalue);
+        long count = result.getLong("valcount");
+        mostFrequentValues.put(value, count);
+      }
     }
     return mostFrequentValues;
   }
@@ -173,11 +184,13 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
     Map<T, Long> quantileHistogram = Maps.newLinkedHashMap();
     ResultSet result = connector.executeQuery(QUANTILE_HISTOGRAM_QUERY, schema, table, column);
     while (result.next()) {
-      T value = parser.fromString(result.getString("colvalue"));
-      long count = result.getLong("valcount");
-      quantileHistogram.put(value, count);
+      String colvalue = result.getString("colvalue");
+      if (colvalue != null) {
+        T value = parser.fromString(colvalue);
+        long count = result.getLong("valcount");
+        quantileHistogram.put(value, count);
+      }
     }
     return quantileHistogram;
   }
-
 }

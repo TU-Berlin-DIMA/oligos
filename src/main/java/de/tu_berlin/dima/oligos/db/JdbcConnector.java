@@ -47,9 +47,10 @@ public class JdbcConnector {
     connection.close();
   }
 
-  public boolean checkColumn(String table, String column) throws SQLException {
+  public boolean checkColumn(final String schema, final String table, final String column) 
+      throws SQLException {
     DatabaseMetaData metaData = connection.getMetaData();
-    ResultSet result = metaData.getColumns(null, null, table.toUpperCase(), column.toUpperCase());
+    ResultSet result = metaData.getColumns(null, schema, table, column);
     if (result.next()) {
       return true;
     } else {
@@ -59,7 +60,7 @@ public class JdbcConnector {
   
   public ResultSet executeQuery(final String query, final Object... parameters) throws SQLException {
     PreparedStatement stmt = connection.prepareStatement(query);
-    for (int i = 1; i < parameters.length; i++) {
+    for (int i = 1; i <= parameters.length; i++) {
       stmt.setObject(i, parameters[i-1]);
     }
     ResultSet result = stmt.executeQuery();

@@ -5,11 +5,8 @@ import java.util.Map;
 import java.util.Set;
 
 import de.tu_berlin.dima.oligos.type.util.Constraint;
-import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 
 public interface ColumnConnector<T> {
-
-  public TypeInfo getType() throws SQLException;
 
   public boolean hasStatistics() throws SQLException;
 
@@ -22,6 +19,10 @@ public interface ColumnConnector<T> {
   public long getCardinality() throws SQLException;
 
   public Set<Constraint> getConstraints() throws SQLException;
+
+  public T getMin() throws SQLException;
+
+  public T getMax() throws SQLException;
 
   public Map<T, Long> getMostFrequentValues() throws SQLException;
 
