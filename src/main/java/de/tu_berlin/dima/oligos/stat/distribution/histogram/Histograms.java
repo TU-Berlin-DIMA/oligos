@@ -1,11 +1,11 @@
-package de.tu_berlin.dima.oligos.stat.histogram;
+package de.tu_berlin.dima.oligos.stat.distribution.histogram;
 
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.SortedSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import de.tu_berlin.dima.oligos.stat.Bucket;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
 public abstract class Histograms {
@@ -14,6 +14,14 @@ public abstract class Histograms {
     Histogram<T> histogram = new CustomHistogram<T>(operator);
     // Make a deep copy to keep function side effect free
     mostFrequent = Maps.newHashMap(mostFrequent);
+    // generate histogram with one sized buckets
+    if (hist.isEmpty()) {
+      for (Entry<T, Long> e : mostFrequent.entrySet()) {
+        T value = e.getKey();
+        long count = e.getValue();
+        histogram.add(value, value, count);
+      }
+    }
     for (Bucket<T> bucket : hist) {
       SortedSet<T> elemsInRange = collectElementsInRange(bucket, mostFrequent, operator);
       // sum the most frequent elements in range

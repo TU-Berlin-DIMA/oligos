@@ -1,15 +1,22 @@
-package de.tu_berlin.dima.oligos.stat.histogram;
+package de.tu_berlin.dima.oligos.stat.distribution.histogram;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
 
-import de.tu_berlin.dima.oligos.stat.Bucket;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
 public abstract class AbstractHistogram<T> implements Histogram<T> {
   
   private Operator<T> operator;
+
+  protected Operator<T> getOperator() {
+    return operator;
+  }
+
+  protected void setOperator(Operator<T> operator) {
+    this.operator = operator;
+  }
 
   @Override
   public abstract Iterator<Bucket<T>> iterator();
@@ -59,6 +66,31 @@ public abstract class AbstractHistogram<T> implements Histogram<T> {
   @Override
   public double getProbabilityOf(T value) {
     return 0.0;
+  }
+
+  @Override
+  public Histogram<T> getExactValues() {
+    Histogram<T> exactValues = new CustomHistogram<T>(operator);
+    for (Bucket<T> bucket : this) {
+      T lb = bucket.getLowerBound();
+      T ub = bucket.getUpperBound();
+      if (operator.compare(lb, ub) == 0) {
+        exactValues.add(lb, ub, bucket.getFrequency());
+      }
+    }
+    return exactValues;
+  }
+
+  public Histogram<T> getNonExactValues() {
+    Histogram<T> nonExactValues = new CustomHistogram<T>(operator);
+    for (Bucket<T> bucket : this) {
+      T lb = bucket.getLowerBound();
+      T ub = bucket.getUpperBound();
+      if (operator.compare(lb, ub) < 0) {
+        nonExactValues.add(lb, ub, bucket.getFrequency());
+      }
+    }
+    return nonExactValues;
   }
 
   @Override

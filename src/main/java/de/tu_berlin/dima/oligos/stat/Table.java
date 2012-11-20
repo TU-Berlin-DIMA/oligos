@@ -1,12 +1,13 @@
 package de.tu_berlin.dima.oligos.stat;
 
+import java.util.Iterator;
 import java.util.Set;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.Sets;
 
 
-public class Table {
+public class Table implements Iterable<Column<?>> {
   
   private final String schema;
   private final String table;
@@ -18,6 +19,14 @@ public class Table {
     this.table = table;
     this.cardinality = cardinality;
     this.columns = Sets.newLinkedHashSet();
+  }
+  
+  public Table(final String schema, final String table, final long cardinality
+      , Set<Column<?>> columns) {
+    this.schema = schema;
+    this.table = table;
+    this.cardinality = cardinality;
+    this.columns = columns;
   }
   
   public String getSchema() {
@@ -65,6 +74,16 @@ public class Table {
     } else if (!table.equals(other.table))
       return false;
     return true;
+  }
+
+  @Override
+  public String toString() {
+    return schema + "." + table + " " + columns.toString();
+  }
+
+  @Override
+  public Iterator<Column<?>> iterator() {
+    return columns.iterator();
   }
   
 }

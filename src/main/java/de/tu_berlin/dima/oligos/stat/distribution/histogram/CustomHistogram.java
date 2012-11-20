@@ -1,15 +1,12 @@
-package de.tu_berlin.dima.oligos.stat.histogram;
+package de.tu_berlin.dima.oligos.stat.distribution.histogram;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.SortedMap;
 import java.util.SortedSet;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import de.tu_berlin.dima.oligos.stat.Bucket;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
 public class CustomHistogram<T> extends AbstractHistogram<T> {
@@ -17,17 +14,18 @@ public class CustomHistogram<T> extends AbstractHistogram<T> {
   private SortedSet<T> lowerBounds;
   private SortedSet<T> upperBounds;
   private List<Long> frequencies;
-  private Operator<T> operator;
 
   public CustomHistogram(Operator<T> operator) {
-    this.operator = operator;
+    setOperator(operator);
     this.lowerBounds = Sets.newTreeSet(operator);
     this.upperBounds = Sets.newTreeSet(operator);
     this.frequencies = Lists.newArrayList();
   }
   
   @Override
+  @Deprecated
   public void add(T lowerBound, T upperBound, long frequency) {
+    // TODO broken
     if (lowerBounds.contains(lowerBound) || upperBounds.contains(upperBound)) {
       return;
     }
@@ -38,7 +36,7 @@ public class CustomHistogram<T> extends AbstractHistogram<T> {
 
   @Override
   public T getMin() {
-    return operator.increment(lowerBounds.first());
+    return getOperator().increment(lowerBounds.first());
   }
 
   @Override
@@ -55,6 +53,7 @@ public class CustomHistogram<T> extends AbstractHistogram<T> {
   @Override
   public int getBucketOf(T value) {
     assert checkConsistence();
+    Operator<T> operator = getOperator();
     Iterator<T> lBoundsIter = lowerBounds.iterator();
     Iterator<T> uBoundsIter = upperBounds.iterator();
     int index = 0;
@@ -121,22 +120,6 @@ public class CustomHistogram<T> extends AbstractHistogram<T> {
     };
   }
   
-  public SortedMap<T, Long> getExactValues() {
-    SortedMap<T, Long> exactVals = Maps.newTreeMap(operator);
-    for (Bucket<T> bucket : this) {
-      T lb = bucket.getLowerBound();
-      T ub = bucket.getUpperBound();
-      if (operator.compare(lb, ub) == 0) {
-        exactVals.put(lb, bucket.getFrequency());
-      }
-    }
-    return exactVals;
-  }
-  
-  public void writeDomain() {
-    // TODO write domain information in given format
-  }
-
   private boolean checkConsistence() {
     return lowerBounds.size() == upperBounds.size()
         && lowerBounds.size() == frequencies.size()

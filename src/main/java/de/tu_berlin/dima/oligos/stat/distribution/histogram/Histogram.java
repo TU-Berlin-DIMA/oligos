@@ -1,9 +1,8 @@
-package de.tu_berlin.dima.oligos.stat.histogram;
+package de.tu_berlin.dima.oligos.stat.distribution.histogram;
 
 import java.util.List;
 import java.util.SortedSet;
 
-import de.tu_berlin.dima.oligos.stat.Bucket;
 import de.tu_berlin.dima.oligos.stat.distribution.Distribution;
 
 /**
@@ -26,6 +25,10 @@ public interface Histogram<T> extends Distribution<T>, Iterable<Bucket<T>> {
   public long getTotalNumberOfValues();
   
   //public long getFrequencyAt(int bucket);
+
+  public Histogram<T> getExactValues();
+
+  public Histogram<T> getNonExactValues();
 
   public SortedSet<T> getLowerBounds();
 

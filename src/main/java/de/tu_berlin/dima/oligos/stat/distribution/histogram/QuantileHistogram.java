@@ -1,4 +1,4 @@
-package de.tu_berlin.dima.oligos.stat.histogram;
+package de.tu_berlin.dima.oligos.stat.distribution.histogram;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -9,23 +9,21 @@ import java.util.SortedSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import de.tu_berlin.dima.oligos.stat.Bucket;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
 public class QuantileHistogram<T> extends AbstractHistogram<T> {
   
   private T min;
-  private Operator<T> operator;
   private SortedMap<T, Long> buckets;
   
   public QuantileHistogram(Operator<T> operator) {
-    this.operator = operator;
+    
     this.min = null;
     this.buckets = Maps.newTreeMap(operator);
   }
   
   public QuantileHistogram(T min, Operator<T> operator) {
-    this.operator = operator;
+    setOperator(operator);
     this.min = min;
     this.buckets = Maps.newTreeMap(operator);
   } 
@@ -63,7 +61,7 @@ public class QuantileHistogram<T> extends AbstractHistogram<T> {
   public int getBucketOf(T value) {
     int index = 0;
     for (T bound : buckets.keySet()) {
-      if (operator.compare(value, bound) > 0) {
+      if (getOperator().compare(value, bound) > 0) {
         index++;
       }
     }
@@ -84,7 +82,7 @@ public class QuantileHistogram<T> extends AbstractHistogram<T> {
     int i = 0;
     Iterator<T> uBoundIter = buckets.keySet().iterator();
     while (i < bucket && uBoundIter.hasNext()) {
-      lBound = operator.increment(uBoundIter.next());
+      lBound = getOperator().increment(uBoundIter.next());
       i++;
     }
     return lBound;
@@ -107,7 +105,7 @@ public class QuantileHistogram<T> extends AbstractHistogram<T> {
   }
   
   public SortedSet<T> getLowerBounds() {
-    SortedSet<T> lBounds = Sets.newTreeSet(operator);
+    SortedSet<T> lBounds = Sets.newTreeSet(getOperator());
     for (int i = 0; i < getNumberOfBuckets(); i++) {
       lBounds.add(getLowerBoundAt(i));
     }

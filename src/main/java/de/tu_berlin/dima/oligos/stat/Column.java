@@ -1,18 +1,22 @@
 package de.tu_berlin.dima.oligos.stat;
 
-import java.util.Map;
+import java.util.HashSet;
 import java.util.Set;
 
-import com.google.common.collect.Maps;
-
-import de.tu_berlin.dima.oligos.stat.histogram.CustomHistogram;
-import de.tu_berlin.dima.oligos.stat.histogram.Histogram;
+import de.tu_berlin.dima.oligos.stat.distribution.histogram.Histogram;
 import de.tu_berlin.dima.oligos.type.util.Constraint;
-import de.tu_berlin.dima.oligos.type.util.operator.Operator;
-import de.tu_berlin.dima.oligos.type.util.operator.OperatorManager;
+import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 
 public class Column<T> {
 
+  @SuppressWarnings("serial")
+  public static final Set<String> SUPPORTED_TYPES = new HashSet<String>() {{
+    add("integer");
+    add("date");
+    add("decimal");
+  }};
+
+  private final String schema;
   private final String table;
   private final String column;
   private final String type;
@@ -22,11 +26,16 @@ public class Column<T> {
   private final long cardinality;
   private final long numNulls;
   private final Histogram<T> distribution;
-  private final Map<T, Long> mostFrequent;
+  private final Parser<T> parser;
+  //private final Map<T, Long> mostFrequent;
   
 
-  public Column(final String table, final String column, final String type, Set<Constraint> constraints, T min, T max,
-      long cardinality, long numNulls, Histogram<T> distribution) {
+  public Column(final String schema, final String table, final String column
+      , final String type, final Set<Constraint> constraints
+      , final T min, final T max
+      , final long cardinality, final long numNulls
+      , final Histogram<T> distribution, final Parser<T> parser) {
+    this.schema = schema;
     this.table = table;
     this.column = column;
     this.type = type;
@@ -36,22 +45,11 @@ public class Column<T> {
     this.cardinality = cardinality;
     this.numNulls = numNulls;
     this.distribution = distribution;
-    this.mostFrequent = Maps.newHashMap();
+    this.parser = parser;
   }
   
-  @SuppressWarnings("unchecked")
-  public Column(final String table, final String column, final String type, Set<Constraint> constraints, T min, T max,
-      long cardinality, long numNulls, Map<T, Long> mostFrequent) {
-    this.table = table;
-    this.column = column;
-    this.type = type;
-    this.constraints = constraints;
-    this.min = min;
-    this.max = max;
-    this.cardinality = cardinality;
-    this.numNulls = numNulls;
-    this.distribution = new CustomHistogram<T>((Operator<T>) OperatorManager.getInstance().getOperator("", table, column));
-    this.mostFrequent = mostFrequent;
+  public String getSchema() {
+    return schema;
   }
   
   public String getTable() {
@@ -62,8 +60,8 @@ public class Column<T> {
     return column;
   }
 
-  public String getName() {
-    return table + "." + column;
+  public String getQualifiedName() {
+    return schema + "." + table + "." + column;
   }
   
   public String getType() {
@@ -91,7 +89,11 @@ public class Column<T> {
   }
   
   public boolean isEnumerated() {
-    return !mostFrequent.isEmpty() && distribution.isEmpty();
+    if (SUPPORTED_TYPES.contains(getType())) {
+      return false;
+    } else {
+      return true;
+    }
   }
   
   public boolean isUnique() {
@@ -107,22 +109,19 @@ public class Column<T> {
   }
   
   public long getNumberOfValues() {
-    if (hasDistribution()) {
-      return distribution.getTotalNumberOfValues();
-    } else {
-      long total = 0;
-      for (long c : mostFrequent.values()) {
-        total += c;
-      }
-      return total;
-    }
+    return distribution.getTotalNumberOfValues();
   }
   
   public Histogram<T> getDistribution() {
     return distribution;
   }
-  
-  public Map<T, Long> getDomain() {
-    return mostFrequent;
+
+  public String asString(Object value) {
+    return parser.toString(value);
+  }
+
+  @Override
+  public String toString() {
+    return getQualifiedName();
   }
 }

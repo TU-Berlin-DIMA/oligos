@@ -1,4 +1,4 @@
-package de.tu_berlin.dima.oligos.stat;
+package de.tu_berlin.dima.oligos.stat.distribution.histogram;
 
 public class Bucket<T> {
   private final T lowerBound;
@@ -22,7 +22,7 @@ public class Bucket<T> {
   public long getFrequency() {
     return frequency;
   }
-  
+
   @Override
   public String toString() {
     return "" + lowerBound + '\t' + upperBound + '\t' + frequency;
