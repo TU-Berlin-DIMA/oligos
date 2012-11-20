@@ -16,18 +16,6 @@ import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 
 public class Db2ColumnConnector<T> implements ColumnConnector<T> {
   
-  private final static String ENUMERATED_QUERY =
-      "SELECT R.num_most_frequent, S.colcard " +
-      "FROM   (SELECT COUNT(*) as num_most_frequent " +
-      "        FROM SYSSTAT.COLDIST " +
-      "        WHERE tabschema = ?" +
-      "          AND tabname = ? " +
-      "          AND colname = ? " +
-      "          AND type = 'F' " +
-      "          AND colvalue is not null) as R, " +
-      "       (SELECT colcard " +
-      "        FROM   SYSSTAT.COLUMNS " +
-      "        WHERE  tabschema = ? AND tabname = ? AND colname = ?) as S";
   private final static String CONSTRAINT_QUERY =
       "SELECT type " +
       "FROM   SYSCAT.TABCONST tc, SYSCAT.KEYCOLUSE kcu " +
@@ -69,41 +57,6 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
   }
 
   @Override
-  public boolean hasStatistics() throws SQLException {
-    ResultSet result = connector.executeQuery(DOMAIN_QUERY, schema, table, column);
-    if (result.next()) {
-      long card = result.getLong("COLCARD");
-      return (card != -1) ? true : false; 
-    } else {
-      throw new ColumnDoesNotExistException(schema, table, column);
-    }
-  }
-
-  @Override
-  public boolean isEnumerated() throws SQLException {
-    ResultSet result = connector.executeQuery(ENUMERATED_QUERY, schema, table, column
-        , schema, table, column);
-    if (result.next()) {
-      long colCard = result.getLong("colcard");
-      int numMostFreq = result.getInt("num_most_frequent");
-      return colCard <= numMostFreq;
-    } else {
-      throw new ColumnDoesNotExistException(schema, table, column);
-    }
-  }
-
-  @Override
-  public boolean isNullable() throws SQLException {
-    ResultSet result = connector.executeQuery(DOMAIN_QUERY, schema, table, column);
-    if (result.next()) {
-      boolean nullable = result.getString("nulls").charAt(0) == 'Y' ? true : false;
-      return nullable;
-    } else {
-      throw new ColumnDoesNotExistException(schema, table, column);
-    }
-  }
-
-  @Override
   public Set<Constraint> getConstraints() throws SQLException {
     Set<Constraint> constraints = Sets.newHashSet();
     ResultSet result = connector.executeQuery(CONSTRAINT_QUERY, schema, table, column);
@@ -117,9 +70,6 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
         constraints.add(Constraint.FOREIGN_KEY);
       }
      }
-    if (!isNullable()) {
-      constraints.add(Constraint.NOT_NULL);
-    }
     return constraints;
   }
 

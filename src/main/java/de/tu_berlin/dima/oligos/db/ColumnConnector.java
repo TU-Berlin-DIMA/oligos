@@ -8,12 +8,6 @@ import de.tu_berlin.dima.oligos.type.util.Constraint;
 
 public interface ColumnConnector<T> {
 
-  public boolean hasStatistics() throws SQLException;
-
-  public boolean isEnumerated() throws SQLException;
-
-  public boolean isNullable() throws SQLException;
-
   public long getNumNulls() throws SQLException;
   
   public long getCardinality() throws SQLException;
