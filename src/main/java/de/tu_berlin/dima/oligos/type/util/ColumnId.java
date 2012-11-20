@@ -8,9 +8,9 @@ public class ColumnId {
   private final String column;
   
   public ColumnId(final String schema, final String table, final String column) {
-    this.schema = schema.toLowerCase();
-    this.table = table.toLowerCase();
-    this.column = column.toLowerCase();
+    this.schema = schema;
+    this.table = table;
+    this.column = column;
   }
   
   public String getSchema() {

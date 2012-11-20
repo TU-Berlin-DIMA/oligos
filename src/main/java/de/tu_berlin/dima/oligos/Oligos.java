@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.commons.cli.CommandLine;
@@ -20,24 +21,35 @@ import org.apache.log4j.Logger;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import de.tu_berlin.dima.oligos.db.DB2Connector;
-import de.tu_berlin.dima.oligos.exception.ColumnDoesNotExistException;
+import de.tu_berlin.dima.oligos.db.ColumnConnector;
+import de.tu_berlin.dima.oligos.db.JdbcConnector;
+import de.tu_berlin.dima.oligos.db.MetaConnector;
+import de.tu_berlin.dima.oligos.db.SchemaConnector;
+import de.tu_berlin.dima.oligos.db.TableConnector;
+import de.tu_berlin.dima.oligos.db.db2.Db2ColumnConnector;
+import de.tu_berlin.dima.oligos.db.db2.Db2MetaConnector;
+import de.tu_berlin.dima.oligos.db.db2.Db2SchemaConnector;
+import de.tu_berlin.dima.oligos.db.db2.Db2TableConnector;
 import de.tu_berlin.dima.oligos.exception.TypeNotSupportedException;
 import de.tu_berlin.dima.oligos.io.MyriadWriter;
-import de.tu_berlin.dima.oligos.stat.Column;
+import de.tu_berlin.dima.oligos.profiler.ColumnProfiler;
+import de.tu_berlin.dima.oligos.profiler.PseudoColumnProfiler;
+import de.tu_berlin.dima.oligos.profiler.SchemaProfiler;
+import de.tu_berlin.dima.oligos.profiler.TableProfiler;
+import de.tu_berlin.dima.oligos.stat.Schema;
+import de.tu_berlin.dima.oligos.type.util.ColumnId;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.operator.CharOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.DateOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.DecimalOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.IntegerOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
-import de.tu_berlin.dima.oligos.type.util.operator.OperatorManager;
 import de.tu_berlin.dima.oligos.type.util.parser.CharParser;
 import de.tu_berlin.dima.oligos.type.util.parser.DateParser;
 import de.tu_berlin.dima.oligos.type.util.parser.DecimalParser;
 import de.tu_berlin.dima.oligos.type.util.parser.IntegerParser;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
-import de.tu_berlin.dima.oligos.type.util.parser.ParserManager;
+import de.tu_berlin.dima.oligos.type.util.parser.StringParser;
 
 public class Oligos {
 
@@ -57,66 +69,88 @@ public class Oligos {
   private static final String HEADER = Oligos.class.getSimpleName()
       + " is a application to infer statistical information from a database catalog.";
 
-  private DB2Connector connector;
+  public static boolean isIncremetalType(TypeInfo type) {
+    @SuppressWarnings("serial")
+    Set<String> types = new HashSet<String>() {{
+      add("integer");
+      add("decimal");
+      add("date");
+    }};
+    if (types.contains(type.getTypeName().toLowerCase())) {
+      return true;
+    } else {
+      return false;
+    }
+  }
 
-  public Oligos(DB2Connector connector) {
-    this.connector = connector;
+  public static InputSchema validateSchema(final InputSchema input
+      , final MetaConnector connector) throws SQLException {
+    InputSchema validatedSchema = new InputSchema();
+    for (ColumnId columnId : input) {
+      if (connector.hasColumn(columnId)) {
+        validatedSchema.addColumn(columnId);
+      } else {
+        LOGGER.warn(columnId.getQualifiedName() + " does not exist!");
+      }
+    }
+    return validatedSchema;
+  }
+
+  public static ColumnProfiler<?> getProfiler(final ColumnId columnId, final TypeInfo type
+      , final JdbcConnector jdbcConnector) throws SQLException, TypeNotSupportedException {
+    String schema = columnId.getSchema();
+    String table = columnId.getTable();
+    String column = columnId.getColumn();
+    return getProfiler(schema, table, column, type, jdbcConnector);
   }
   
-  public ColumnProfiler<?> getProfiler(String schema, String table, String column)
+  public static ColumnProfiler<?> getProfiler(final String schema, final  String table
+      , final String column, final TypeInfo type, final JdbcConnector jdbcConnector)
       throws SQLException, TypeNotSupportedException {
     ColumnProfiler<?> profiler = null;
-    ParserManager parserManager = ParserManager.getInstance();
-    OperatorManager operatorManager =  OperatorManager.getInstance();
-    TypeInfo type = connector.getColumnType(table, column);
     String typeName = type.getTypeName().toLowerCase();
     if (typeName.equals("integer")) {
       Parser<Integer> p = new IntegerParser();
       Operator<Integer> op = new IntegerOperator();
-      parserManager.register(schema, table, column, p);
-      operatorManager.register(schema, table, column, op);
-      profiler = new ColumnProfiler<Integer>(connector, p, op, table, column, typeName);
+      ColumnConnector<Integer> connector = new Db2ColumnConnector<Integer>(
+          jdbcConnector, schema, table, column, p);      
+      profiler = new ColumnProfiler<Integer>(
+          schema, table, column, typeName, connector, op, p);
     } else if (typeName.equals("date")) {
       Parser<Date> p = new DateParser();
       Operator<Date> op = new DateOperator();
-      parserManager.register(schema, table, column, p);
-      operatorManager.register(schema, table, column, op);
-      profiler = new ColumnProfiler<Date>(connector, p, op, table, column, typeName);
+      ColumnConnector<Date> connector = new Db2ColumnConnector<Date>(
+          jdbcConnector, schema, table, column, p); 
+      profiler = new ColumnProfiler<Date>(
+          schema, table, column, typeName, connector, op, p);
     } else if (typeName.equals("decimal")) {
       Parser<BigDecimal> p = new DecimalParser();
       Operator<BigDecimal> op = new DecimalOperator(type.getScale());
-      parserManager.register(schema, table, column, p);
-      operatorManager.register(schema, table, column, op);
-      profiler = new ColumnProfiler<BigDecimal>(connector, p, op, table, column, typeName);
+      ColumnConnector<BigDecimal> connector = new Db2ColumnConnector<BigDecimal>(
+          jdbcConnector, schema, table, column, p); 
+      profiler = new ColumnProfiler<BigDecimal>(
+          schema, table, column, typeName, connector, op, p);
     } else if (typeName.equals("character")
         && (type.getLength() == 1)) {
       Parser<Character> p = new CharParser();
       Operator<Character> op = new CharOperator();
-      parserManager.register(schema, table, column, p);
-      operatorManager.register(schema, table, column, op);
-      profiler = new ColumnProfiler<Character>(connector, p, op, table, column, typeName);
+      ColumnConnector<Character> connector = new Db2ColumnConnector<Character>(
+          jdbcConnector, schema, table, column, p); 
+      profiler = new ColumnProfiler<Character>(
+          schema, table, column, typeName, connector, op, p);
     } else {
-      LOGGER.warn("Could not profile " + table + "." + column);
-      throw new TypeNotSupportedException(typeName, type.getLength());
+      LOGGER.warn(schema + "." + table + "." + column
+          + " is not supported using pseudo profiler instead!");
+      Parser<String> p = new StringParser();
+      ColumnConnector<String> connector = new Db2ColumnConnector<String>(
+          jdbcConnector, schema, table, column, p);
+      profiler = new PseudoColumnProfiler(
+          schema, table, column, typeName, connector);
     }
     return profiler;
   }
 
-  public Column<?> profile(String schema, String table, String column)
-      throws ColumnDoesNotExistException, SQLException, TypeNotSupportedException {
-    if (!connector.checkColumn(table, column)) {
-      // TODO Use log4j or throw exception
-      throw new ColumnDoesNotExistException(table, column);
-    }
-    if (connector.hasStatistics(table, column)) {
-      ColumnProfiler<?> profiler = getProfiler(schema, table, column);
-      return profiler.profile();
-    } else {
-      return null;
-    }
-  }
-
-  public static void main(String[] args) {
+  public static void main(String[] args) throws TypeNotSupportedException {
     BasicConfigurator.configure();
     LOGGER.setLevel(Level.ALL);
     CommandLineParser parser = new PosixParser();
@@ -141,46 +175,85 @@ public class Oligos {
         // get profiling information
         String database = cmd.getOptionValue("database");
         // TODO get this from user
-        String schema = "";
-        String table = cmd.getOptionValue("table");
+        String schemaName = "DB2INST2";
+        //String table = cmd.getOptionValue("table");
 
         // get the columns
-        String[] columns = cmd.getArgs();
+        //String[] columns = cmd.getArgs();
+        //Map<String, Map<String, Set<String>>> inputSchema = Maps.newLinkedHashMap();
+        
+        // TODO remove hardcoded testdata
+        InputSchema inputSchema = new InputSchema();
+        inputSchema.addColumn(schemaName, "ORDERS", "O_ORDERKEY");
+        inputSchema.addColumn(schemaName, "ORDERS", "O_CUSTKEY");
+        inputSchema.addColumn(schemaName, "ORDERS", "O_ORDERDATE");
+        inputSchema.addColumn(schemaName, "ORDERS", "O_TOTALPRICE");
+        inputSchema.addColumn(schemaName, "ORDERS", "O_ORDERSTATUS");
+        inputSchema.addColumn(schemaName, "CUSTOMER", "C_CUSTKEY");
+        inputSchema.addColumn(schemaName, "CUSTOMER", "C_NAME");
 
-        // actually run the profiling
-        DB2Connector connector = new DB2Connector(hostname, database, port);
-        connector.connect(username, password);
-        Oligos profiler = new Oligos(connector);
-        Set<Column<?>> profiledColumns = Sets.newLinkedHashSet();
-        for (String col : columns) {
-          try {
-            Column<?> column = profiler.profile(schema, table, col);
-            if (column != null) {
-              profiledColumns.add(column);
+        JdbcConnector jdbcConnector = new JdbcConnector(hostname, port, database
+            , JdbcConnector.IBM_JDBC_V4);
+        jdbcConnector.connect(username, password);
+        MetaConnector metaConnector = new Db2MetaConnector(jdbcConnector);
+        // validating schema
+        LOGGER.info("Validating input schema ...");
+        InputSchema validatedSchema = validateSchema(inputSchema, metaConnector);
+
+        // obtaining type information/ column meta data
+        LOGGER.info("Retrieving column meta data ...");
+        Map<ColumnId, TypeInfo> columnTypes = Maps.newLinkedHashMap();
+        for (ColumnId columnId : validatedSchema) {
+          TypeInfo type = metaConnector.getColumnType(columnId);
+          columnTypes.put(columnId, type);
+        }
+        
+        // creating connectors and profilers
+        LOGGER.info("Establashing database connection ...");
+        SchemaConnector schemaConnector = new Db2SchemaConnector(jdbcConnector);
+        TableConnector tableConnector = new Db2TableConnector(jdbcConnector);
+        Set<SchemaProfiler> profilers = Sets.newLinkedHashSet();
+        for (String schema : validatedSchema.schemas()) {
+          SchemaProfiler schemaProfiler = new SchemaProfiler(schema, schemaConnector);
+          profilers.add(schemaProfiler);
+          for (String table : validatedSchema.tables(schema)) {
+            TableProfiler tableProfiler = new TableProfiler(schema, table, tableConnector);
+            schemaProfiler.add(tableProfiler);
+            for (String column : validatedSchema.columns(schema, table)) {
+              ColumnId columnId = new ColumnId(schema, table, column);
+              TypeInfo type = columnTypes.get(columnId);
+              ColumnProfiler<?> columnProfiler = getProfiler(columnId, type, jdbcConnector);
+              tableProfiler.addColumnProfiler(columnProfiler);
             }
-          } catch (ColumnDoesNotExistException cdnee) {
-            System.err.println("Column " + cdnee.getQualifiedColumnName()
-                + " does not exist");
-          } catch (TypeNotSupportedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
           }
         }
-        connector.close();
         
-        Map<String, Set<Column<?>>> relations = Maps.newHashMap();
-        relations.put(table, profiledColumns);
-        MyriadWriter writer = new MyriadWriter(relations, outputDir, generatorName);
-        try {
-          writer.write();
-        } catch (IOException e) {
-          // TODO Auto-generated catch block
-          e.printStackTrace();
+        // profiling statistical data
+        LOGGER.info("Profiling schema ...");
+        Set<Schema> profiledSchemas = Sets.newLinkedHashSet();
+        for (SchemaProfiler schemaProfiler : profilers) {
+          Schema profiledSchema = schemaProfiler.profile();
+          profiledSchemas.add(profiledSchema);
         }
+        
+        LOGGER.info("Generating generator specification ...");
+        for (Schema schema : profiledSchemas) {
+          MyriadWriter writer = new MyriadWriter(schema, outputDir, generatorName);
+          writer.write();
+        }
+        
+        // create XML spec and domain and distribution files
+        
+        // write Myriad files to disk        
+       
+        jdbcConnector.close();
       }
     } catch (ParseException e) {
       formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
     } catch (SQLException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    } catch (IOException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
     }

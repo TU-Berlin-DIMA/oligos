@@ -13,15 +13,19 @@ public class ParserManager {
   public ParserManager() {
     this.parsers = Maps.newHashMap();
   }
+  
+  public void register(ColumnId columnId, Parser<?> parser) {
+    parsers.put(columnId, parser);
+  }
 
   public void register(String schema, String table, String column, Parser<?> parser) {
     ColumnId col = new ColumnId(schema, table, column);
-    parsers.put(col, parser);
+    register(col, parser);
   }
   
   public Parser<?> getParser(String schema, String table, String column) {
     ColumnId col = new ColumnId(schema, table, column);
-    return parsers.get(col);
+    return getParser(col);
   }
   
   public Parser<?> getParser(ColumnId columnId) {

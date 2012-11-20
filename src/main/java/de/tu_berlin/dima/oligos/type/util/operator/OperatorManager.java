@@ -13,10 +13,13 @@ public class OperatorManager {
   public OperatorManager() {
     this.operators = Maps.newHashMap();
   }
-  
+
+  public void register(ColumnId columnId, Operator<?> operator) {
+    operators.put(columnId, operator);
+  }
   public void register(String schema, String table, String column, Operator<?> operator) {
     ColumnId col = new ColumnId(schema, table, column);
-    operators.put(col, operator);
+    register(col, operator);
   }
   public Operator<?> getOperator(String schema, String table, String column) {
     ColumnId col = new ColumnId(schema, table, column);
