@@ -2,37 +2,27 @@ package de.tu_berlin.dima.oligos.io;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-
 import de.tu_berlin.dima.oligos.stat.Column;
-import de.tu_berlin.dima.oligos.type.util.operator.OperatorManager;
-import de.tu_berlin.dima.oligos.type.util.parser.ParserManager;
+import de.tu_berlin.dima.oligos.stat.Schema;
+import de.tu_berlin.dima.oligos.stat.Table;
 
 public abstract class AbstractFileWriter implements Writer {
   
   private final File outputDirectory;
-  private final Map<String, Set<Column<?>>> relations;
+  private final Schema schema;
   private final String extension;
-  protected final ParserManager parserManager;
-  protected final OperatorManager operatorManager;
 
-  public AbstractFileWriter(File outputDirectory, Map<String, Set<Column<?>>> relations, String extension) {
+  public AbstractFileWriter(File outputDirectory, Schema schema, String extension) {
     this.outputDirectory = outputDirectory;
-    this.relations = relations;
+    this.schema = schema;
     this.extension = extension;
-    this.parserManager = ParserManager.getInstance();
-    this.operatorManager = OperatorManager.getInstance();
   }
 
   @Override
   public void write() throws IOException {
-    for (Entry<String, Set<Column<?>>> e : relations.entrySet()) {
-      String table = e.getKey().toLowerCase();
-      Set<Column<?>> columns = e.getValue();
-      File tableDir = new File(outputDirectory, table);
-      for (Column<?> column : columns) {
+    for (Table table : schema) {
+      File tableDir = new File(outputDirectory, table.getTable());
+      for (Column<?> column : table) {
         File outputFile = new File(tableDir, getFileName(column));
         writeFile(outputFile, column);
       }
