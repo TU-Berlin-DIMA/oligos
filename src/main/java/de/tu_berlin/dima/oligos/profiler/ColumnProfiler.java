@@ -16,13 +16,13 @@ import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 
 public class ColumnProfiler<T> implements Profiler<Column<T>> {
 
-  private final ColumnConnector<T> connector;
-  private final String schema;
-  private final String table;
-  private final String column;
-  private final String type;
-  private final Operator<T> operator;
-  private final Parser<T> parser;
+  protected final ColumnConnector<T> connector;
+  protected final String schema;
+  protected final String table;
+  protected final String column;
+  protected final String type;
+  protected final Operator<T> operator;
+  protected final Parser<T> parser;
 
   public ColumnProfiler(final String schema, final String table, final String column
       , final String type, final ColumnConnector<T> connector
@@ -35,7 +35,7 @@ public class ColumnProfiler<T> implements Profiler<Column<T>> {
     this.operator = operator;
     this.parser = parser;
   }
-  
+
   public QuantileHistogram<T> getQuantileHistogram() {
     try {
       T min = connector.getMin();

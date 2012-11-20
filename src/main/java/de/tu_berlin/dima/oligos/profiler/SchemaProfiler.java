@@ -29,17 +29,17 @@ public class SchemaProfiler implements Profiler<Schema> {
     this.tableProfilers = Sets.newLinkedHashSet();
   }
 
-  public void addTableProfiler(final TableProfiler tableProfiler) {
+  public void add(final TableProfiler tableProfiler) {
     tableProfilers.add(tableProfiler);
   }
   
   public Schema profile() {
-    Set<Table> tables = getTableStatistics();
+    Set<Table> tables = getTables();
     Set<Quartet<String, String, String, String>> references = getReferences();
     return new Schema(schema, tables, references);
   }
   
-  private Set<Table> getTableStatistics() {
+  private Set<Table> getTables() {
     Set<Table> tables = Sets.newLinkedHashSet();
     for (TableProfiler profiler : tableProfilers) {
       Table table = profiler.profile();
