@@ -21,16 +21,18 @@ public class ColumnProfiler<T> implements Profiler<Column<T>> {
   protected final String table;
   protected final String column;
   protected final String type;
+  protected final boolean isEnum;
   protected final Operator<T> operator;
   protected final Parser<T> parser;
 
   public ColumnProfiler(final String schema, final String table, final String column
-      , final String type, final ColumnConnector<T> connector
+      , final String type, final boolean isEnum, final ColumnConnector<T> connector
       , final Operator<T> operator, final Parser<T> parser) {
     this.schema = schema;
     this.table = table;
     this.column = column;
     this.type = type;
+    this.isEnum = isEnum;
     this.connector = connector;
     this.operator = operator;
     this.parser = parser;
@@ -64,12 +66,14 @@ public class ColumnProfiler<T> implements Profiler<Column<T>> {
       T max = connector.getMax();
       long cardinality = connector.getCardinality();
       long numNulls = connector.getNumNulls();
-      Map<T, Long> rawHistogram = connector.getHistogram();
       QuantileHistogram<T> quantileHistogram = new QuantileHistogram<T>(min, operator);
-      for (Entry<T, Long> e : rawHistogram.entrySet()) {
-        T upperBound = e.getKey();
-        long frequency = e.getValue();
-        quantileHistogram.addBound(upperBound, frequency);
+      if (!isEnum) {
+        Map<T, Long> rawHistogram = connector.getHistogram();
+        for (Entry<T, Long> e : rawHistogram.entrySet()) {
+          T upperBound = e.getKey();
+          long frequency = e.getValue();
+          quantileHistogram.addBound(upperBound, frequency);
+        }        
       }
       Map<T, Long> mostFrequentValues = connector.getMostFrequentValues();
       Histogram<T> distribution = Histograms.combineHistograms(

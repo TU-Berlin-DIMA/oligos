@@ -18,8 +18,8 @@ import de.tu_berlin.dima.oligos.type.util.parser.StringParser;
 public class PseudoColumnProfiler extends ColumnProfiler<String>  {
 
   public PseudoColumnProfiler(String schema, String table, String column,
-      String type, ColumnConnector<String> connector) {
-    super(schema, table, column, type, connector, null, new StringParser());
+      String type, boolean isEnum, ColumnConnector<String> connector) {
+    super(schema, table, column, type, isEnum, connector, null, new StringParser());
   }
 
   @Override
@@ -36,11 +36,13 @@ public class PseudoColumnProfiler extends ColumnProfiler<String>  {
       for (Entry<String, Long> e : mostFrequentValues.entrySet()) {
         exactValues.put(e.getKey(), e.getValue());
       }
-      for (Entry<String, Long> e : quantileHistogram.entrySet()) {
-        String key = e.getKey();
-        long value = e.getValue();
-        if (!exactValues.containsKey(key)) {
-          exactValues.put(key, value);
+      if (!isEnum) {
+        for (Entry<String, Long> e : quantileHistogram.entrySet()) {
+          String key = e.getKey();
+          long value = e.getValue();
+          if (!exactValues.containsKey(key)) {
+            exactValues.put(key, value);
+          }
         }
       }
       Set<Constraint> constraints = connector.getConstraints();      

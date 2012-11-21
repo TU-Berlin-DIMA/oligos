@@ -97,39 +97,42 @@ public class Oligos {
   }
 
   public static ColumnProfiler<?> getProfiler(final ColumnId columnId, final TypeInfo type
-      , final JdbcConnector jdbcConnector) throws SQLException, TypeNotSupportedException {
+      , final JdbcConnector jdbcConnector, final MetaConnector metaConnector)
+          throws SQLException, TypeNotSupportedException {
     String schema = columnId.getSchema();
     String table = columnId.getTable();
     String column = columnId.getColumn();
-    return getProfiler(schema, table, column, type, jdbcConnector);
+    return getProfiler(schema, table, column, type, jdbcConnector, metaConnector);
   }
   
   public static ColumnProfiler<?> getProfiler(final String schema, final  String table
-      , final String column, final TypeInfo type, final JdbcConnector jdbcConnector)
+      , final String column, final TypeInfo type, final JdbcConnector jdbcConnector
+      , final MetaConnector metaConnector)
       throws SQLException, TypeNotSupportedException {
     ColumnProfiler<?> profiler = null;
     String typeName = type.getTypeName().toLowerCase();
+    boolean isEnum = metaConnector.isEnumerated(schema, table, column);
     if (typeName.equals("integer")) {
       Parser<Integer> p = new IntegerParser();
       Operator<Integer> op = new IntegerOperator();
       ColumnConnector<Integer> connector = new Db2ColumnConnector<Integer>(
           jdbcConnector, schema, table, column, p);      
       profiler = new ColumnProfiler<Integer>(
-          schema, table, column, typeName, connector, op, p);
+          schema, table, column, typeName, isEnum, connector, op, p);
     } else if (typeName.equals("date")) {
       Parser<Date> p = new DateParser();
       Operator<Date> op = new DateOperator();
       ColumnConnector<Date> connector = new Db2ColumnConnector<Date>(
           jdbcConnector, schema, table, column, p); 
       profiler = new ColumnProfiler<Date>(
-          schema, table, column, typeName, connector, op, p);
+          schema, table, column, typeName, isEnum, connector, op, p);
     } else if (typeName.equals("decimal")) {
       Parser<BigDecimal> p = new DecimalParser();
       Operator<BigDecimal> op = new DecimalOperator(type.getScale());
       ColumnConnector<BigDecimal> connector = new Db2ColumnConnector<BigDecimal>(
           jdbcConnector, schema, table, column, p); 
       profiler = new ColumnProfiler<BigDecimal>(
-          schema, table, column, typeName, connector, op, p);
+          schema, table, column, typeName, isEnum, connector, op, p);
     } else if (typeName.equals("character")
         && (type.getLength() == 1)) {
       Parser<Character> p = new CharParser();
@@ -137,7 +140,7 @@ public class Oligos {
       ColumnConnector<Character> connector = new Db2ColumnConnector<Character>(
           jdbcConnector, schema, table, column, p); 
       profiler = new ColumnProfiler<Character>(
-          schema, table, column, typeName, connector, op, p);
+          schema, table, column, typeName, isEnum, connector, op, p);
     } else {
       LOGGER.warn(schema + "." + table + "." + column
           + " is not supported using pseudo profiler instead!");
@@ -145,7 +148,7 @@ public class Oligos {
       ColumnConnector<String> connector = new Db2ColumnConnector<String>(
           jdbcConnector, schema, table, column, p);
       profiler = new PseudoColumnProfiler(
-          schema, table, column, typeName, connector);
+          schema, table, column, typeName, isEnum, connector);
     }
     return profiler;
   }
@@ -184,13 +187,25 @@ public class Oligos {
         
         // TODO remove hardcoded testdata
         InputSchema inputSchema = new InputSchema();
+        // ORDERS
         inputSchema.addColumn(schemaName, "ORDERS", "O_ORDERKEY");
         inputSchema.addColumn(schemaName, "ORDERS", "O_CUSTKEY");
-        inputSchema.addColumn(schemaName, "ORDERS", "O_ORDERDATE");
-        inputSchema.addColumn(schemaName, "ORDERS", "O_TOTALPRICE");
         inputSchema.addColumn(schemaName, "ORDERS", "O_ORDERSTATUS");
+        inputSchema.addColumn(schemaName, "ORDERS", "O_TOTALPRICE");
+        inputSchema.addColumn(schemaName, "ORDERS", "O_ORDERDATE");
+        inputSchema.addColumn(schemaName, "ORDERS", "O_ORDERPRIORITY");
+        inputSchema.addColumn(schemaName, "ORDERS", "O_CLERK");
+        inputSchema.addColumn(schemaName, "ORDERS", "O_SHIPPRIORITY");
+        inputSchema.addColumn(schemaName, "ORDERS", "O_COMMENT");
+        // CUSTOMER
         inputSchema.addColumn(schemaName, "CUSTOMER", "C_CUSTKEY");
         inputSchema.addColumn(schemaName, "CUSTOMER", "C_NAME");
+        inputSchema.addColumn(schemaName, "CUSTOMER", "C_ADDRESS");
+        inputSchema.addColumn(schemaName, "CUSTOMER", "C_NATIONKEY");
+        inputSchema.addColumn(schemaName, "CUSTOMER", "C_PHONE");
+        inputSchema.addColumn(schemaName, "CUSTOMER", "C_ACCTBAL");
+        inputSchema.addColumn(schemaName, "CUSTOMER", "C_MKTSEGMENT");
+        inputSchema.addColumn(schemaName, "CUSTOMER", "C_COMMENT");
 
         JdbcConnector jdbcConnector = new JdbcConnector(hostname, port, database
             , JdbcConnector.IBM_JDBC_V4);
@@ -222,7 +237,8 @@ public class Oligos {
             for (String column : validatedSchema.columns(schema, table)) {
               ColumnId columnId = new ColumnId(schema, table, column);
               TypeInfo type = columnTypes.get(columnId);
-              ColumnProfiler<?> columnProfiler = getProfiler(columnId, type, jdbcConnector);
+              ColumnProfiler<?> columnProfiler =
+                  getProfiler(columnId, type, jdbcConnector, metaConnector);
               tableProfiler.addColumnProfiler(columnProfiler);
             }
           }
