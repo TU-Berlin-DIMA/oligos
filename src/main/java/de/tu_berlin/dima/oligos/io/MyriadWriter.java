@@ -101,6 +101,12 @@ public class MyriadWriter implements Writer {
         Element field = createRecordType(columnId, column);
         recordType.appendChild(field);
         // create setters for current column
+        if (schema.isReference(columnId)) {
+          Element reference = createReference(columnId);
+          recordType.appendChild(reference);
+          Element refSetter = createReferenceSetter(columnId);
+          setterChain.appendChild(refSetter);
+        }
         Element setter = createSetter(columnId, column);
         setterChain.appendChild(setter);
       }
@@ -222,48 +228,54 @@ public class MyriadWriter implements Writer {
   }
   
   private Element createRecordType(ColumnId columnId, Column<?> colStat) {
-    Element field;
-    if (schema.isReference(columnId)) {
-      field = document.createElement("reference");
-      field.setAttribute("type", getReferenceType(columnId));
-    } else {
-      field = document.createElement("field");
-      if (colStat.isEnumerated()) {
-        field.setAttribute("type", "Enum");
-        field.setAttribute("enumref", columnId.getQualifiedName().toLowerCase());
-      } else {
-        field.setAttribute("type", getMyriadType(colStat.getType()));
-      }
-    }
+    Element field = document.createElement("field");
     field.setAttribute("name", columnId.getColumn().toLowerCase());
+    if (colStat.isEnumerated()) {
+      field.setAttribute("type", "Enum");
+      field.setAttribute("enumref", columnId.getQualifiedName().toLowerCase());
+    } else {
+      field.setAttribute("type", getMyriadType(colStat.getType()));
+    }
     return field;
+  }
+
+  private Element createReference(ColumnId columnId) {
+    Element reference = document.createElement("reference");
+    reference.setAttribute("name", columnId.getColumn().toLowerCase() + "_ref");
+    reference.setAttribute("type", getReferenceType(columnId));
+    return reference;
+  }
+
+  private Element createReferenceSetter(ColumnId columnId) {
+    Element setter = document.createElement("setter");
+    setter.setAttribute("key", getSetterKey(columnId) + "_ref");
+    setter.setAttribute("type", "reference_setter");
+    Element fieldArg =
+        createKeyTypeRefArgument("reference", "reference_ref", getReferenceRef(columnId).toLowerCase());
+    setter.appendChild(fieldArg);
+    Element randomReferenceProvider = createRandomReferenceProvider(columnId);
+    setter.appendChild(randomReferenceProvider);
+    return setter;
   }
   
   private Element createSetter(ColumnId columnId, Column<?> colStat) {
     Element setter = document.createElement("setter");
     setter.setAttribute("key", getSetterKey(columnId));
+    setter.setAttribute("type", "field_setter");
+    Element fieldArg = createKeyTypeRefArgument("field", "field_ref", getFieldRef(columnId));
+    setter.appendChild(fieldArg);
     // create reference provider for references, i.e. foreign keys
     if (schema.isReference(columnId)) {
-      setter.setAttribute("type", "reference_setter");
-      Element fieldArg = createKeyTypeRefArgument("reference", "reference_ref"
-          , getFieldRef(columnId));
-      setter.appendChild(fieldArg);
-      Element randomReferenceProvider = createRandomReferenceProvider(columnId);
-      setter.appendChild(randomReferenceProvider);
+      Element contextValueProvider = createContextValueProvider(columnId);
+      setter.appendChild(contextValueProvider);
     }
     // create clustered value provider for all key columns
     else if (colStat.getConstraints().contains(Constraint.PRIMARY_KEY)) {
-      setter.setAttribute("type", "field_setter");
-      Element fieldArg = createKeyTypeRefArgument("field", "field_ref", getFieldRef(columnId));
-      setter.appendChild(fieldArg);
       Element clusteredValueProvider = createClusteredValueProvider(columnId);
       setter.appendChild(clusteredValueProvider);
     }
     // create random value provider for all non key columns
     else {
-      setter.setAttribute("type", "field_setter");
-      Element fieldArg = createKeyTypeRefArgument("field", "field_ref", getFieldRef(columnId));
-      setter.appendChild(fieldArg);
       Element randomValueProvider = createRandomValueProvider(columnId);
       setter.appendChild(randomValueProvider);
     }    
@@ -308,6 +320,16 @@ public class MyriadWriter implements Writer {
         createKeyTypeRefArgument("probability", "function_ref", getFunctionKey(columnId));
     randomValueProvider.appendChild(probability);
     return randomValueProvider;
+  }
+
+  private Element createContextValueProvider(final ColumnId columnId) {
+    Element contextValueProvider =
+        createKeyTypeArgument("value", "context_field_value_provider");
+    String ref =
+        getReferenceRef(columnId) + ":" + schema.getReferencedColumn(columnId).getColumn().toLowerCase();
+    Element fieldArg = createKeyTypeRefArgument("field", "field_ref", ref);
+    contextValueProvider.appendChild(fieldArg);
+    return contextValueProvider;
   }
 
   private Element createRandomReferenceProvider(final ColumnId columnId) {
@@ -383,6 +405,10 @@ public class MyriadWriter implements Writer {
   
   private String getFieldRef(ColumnId columnId) {
     return (columnId.getTable() + ":" + columnId.getColumn()).toLowerCase();
+  }
+
+  private String getReferenceRef(ColumnId columnId) {
+    return getFieldRef(columnId) + "_ref";
   }
 
   private String getReferenceType(ColumnId columnId) {

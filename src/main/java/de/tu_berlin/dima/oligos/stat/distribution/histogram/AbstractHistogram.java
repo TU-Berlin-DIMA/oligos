@@ -86,7 +86,7 @@ public abstract class AbstractHistogram<T> implements Histogram<T> {
     for (Bucket<T> bucket : this) {
       T lb = bucket.getLowerBound();
       T ub = bucket.getUpperBound();
-      if (operator.compare(lb, ub) < 0) {
+      if (operator.compare(lb, ub) != 0) {
         nonExactValues.add(lb, ub, bucket.getFrequency());
       }
     }

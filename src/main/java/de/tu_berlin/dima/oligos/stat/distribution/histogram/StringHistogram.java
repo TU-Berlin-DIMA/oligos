@@ -24,7 +24,9 @@ public class StringHistogram implements Histogram<String> {
   public StringHistogram(Map<String, Long> mappings) {
     this();
     this.exactValues.putAll(mappings);
-    this.total = mappings.size();
+    for (long freq : mappings.values()) {
+      total += freq;
+    }
   }
 
   @Override
