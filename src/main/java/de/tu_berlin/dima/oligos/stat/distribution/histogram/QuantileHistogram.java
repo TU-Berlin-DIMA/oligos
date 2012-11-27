@@ -5,8 +5,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.SortedSet;
+import java.util.TreeMap;
 
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
@@ -17,15 +17,14 @@ public class QuantileHistogram<T> extends AbstractHistogram<T> {
   private SortedMap<T, Long> buckets;
   
   public QuantileHistogram(Operator<T> operator) {
-    
     this.min = null;
-    this.buckets = Maps.newTreeMap(operator);
+    this.buckets = new TreeMap<T, Long>(operator);
   }
   
   public QuantileHistogram(T min, Operator<T> operator) {
     setOperator(operator);
     this.min = min;
-    this.buckets = Maps.newTreeMap(operator);
+    this.buckets = new TreeMap<T, Long>(operator);
   } 
   
   public void setMin(T min) {
