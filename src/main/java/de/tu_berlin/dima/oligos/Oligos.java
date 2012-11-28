@@ -60,12 +60,11 @@ public class Oligos {
       .addOption("pass", "password", true, "Password for database connection")
       .addOption("h", "hostname", true, "Connect to given host")
       .addOption("d", "database", true, "Use given database")
-      .addOption("t", "table", true, "Database table to profile")
       .addOption("p", "port", true, "Database port")
       .addOption("o", "output", true, "Path to the output folder")
       .addOption("g", "generator", true, "Name of the generator");
   private static final String USAGE = Oligos.class.getSimpleName()
-      + " -u <user> -h <host> -d <database> -p <port> [column ...]";
+      + " -u <user> -h <host> -d <database> -p <port> column [column]";
   private static final String HEADER = Oligos.class.getSimpleName()
       + " is a application to infer statistical information from a database catalog.";
 
@@ -178,34 +177,24 @@ public class Oligos {
         // get profiling information
         String database = cmd.getOptionValue("database");
         // TODO get this from user
-        String schemaName = "DB2INST2";
+        //String schemaName = "DB2INST2";
         //String table = cmd.getOptionValue("table");
 
         // get the columns
-        //String[] columns = cmd.getArgs();
-        //Map<String, Map<String, Set<String>>> inputSchema = Maps.newLinkedHashMap();
-        
-        // TODO remove hardcoded testdata
         InputSchema inputSchema = new InputSchema();
-        // ORDERS
-        inputSchema.addColumn(schemaName, "ORDERS", "O_ORDERKEY");
-        inputSchema.addColumn(schemaName, "ORDERS", "O_CUSTKEY");
-        inputSchema.addColumn(schemaName, "ORDERS", "O_ORDERSTATUS");
-        inputSchema.addColumn(schemaName, "ORDERS", "O_TOTALPRICE");
-        inputSchema.addColumn(schemaName, "ORDERS", "O_ORDERDATE");
-        inputSchema.addColumn(schemaName, "ORDERS", "O_ORDERPRIORITY");
-        inputSchema.addColumn(schemaName, "ORDERS", "O_CLERK");
-        inputSchema.addColumn(schemaName, "ORDERS", "O_SHIPPRIORITY");
-        inputSchema.addColumn(schemaName, "ORDERS", "O_COMMENT");
-        // CUSTOMER
-        inputSchema.addColumn(schemaName, "CUSTOMER", "C_CUSTKEY");
-        inputSchema.addColumn(schemaName, "CUSTOMER", "C_NAME");
-        inputSchema.addColumn(schemaName, "CUSTOMER", "C_ADDRESS");
-        inputSchema.addColumn(schemaName, "CUSTOMER", "C_NATIONKEY");
-        inputSchema.addColumn(schemaName, "CUSTOMER", "C_PHONE");
-        inputSchema.addColumn(schemaName, "CUSTOMER", "C_ACCTBAL");
-        inputSchema.addColumn(schemaName, "CUSTOMER", "C_MKTSEGMENT");
-        inputSchema.addColumn(schemaName, "CUSTOMER", "C_COMMENT");
+        String[] columns = cmd.getArgs();
+        for (String col : columns) {
+          System.out.println(col);
+          String[] ref = col.split("\\.");
+          if (ref.length == 3) {
+            String schema = ref[0];
+            String table = ref[1];
+            String column = ref[2];
+            inputSchema.addColumn(schema, table, column);
+          } else {
+            LOGGER.error("Fully qualified column names");
+          }
+        }
 
         JdbcConnector jdbcConnector = new JdbcConnector(hostname, port, database
             , JdbcConnector.IBM_JDBC_V4);
@@ -258,10 +247,6 @@ public class Oligos {
           writer.write();
         }
         
-        // create XML spec and domain and distribution files
-        
-        // write Myriad files to disk        
-       
         jdbcConnector.close();
       }
     } catch (ParseException e) {
@@ -301,11 +286,6 @@ public class Oligos {
     if (!cmd.hasOption("port")) {
       System.out.println("Please specify a port for the database connection");
       formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
-      return false;
-    }
-    if (!cmd.hasOption("table")) {
-      System.out.println("Please specify a database table");
-      formatter.printHelp(USAGE, HEADER, OPTS, "");
       return false;
     }
     if (!cmd.hasOption("generator")) {
