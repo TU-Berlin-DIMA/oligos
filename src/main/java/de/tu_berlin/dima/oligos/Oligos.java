@@ -8,20 +8,18 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.cli.PosixParser;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-
+import de.tu_berlin.dima.oligos.cli.CommandLineInterface;
 import de.tu_berlin.dima.oligos.db.ColumnConnector;
+import de.tu_berlin.dima.oligos.db.DbUtils;
 import de.tu_berlin.dima.oligos.db.JdbcConnector;
 import de.tu_berlin.dima.oligos.db.MetaConnector;
 import de.tu_berlin.dima.oligos.db.SchemaConnector;
@@ -54,19 +52,6 @@ import de.tu_berlin.dima.oligos.type.util.parser.StringParser;
 public class Oligos {
 
   private static final Logger LOGGER = Logger.getLogger(Oligos.class);
-  private static final Options OPTS = new Options()
-      .addOption("u", "username", true, "Username for database connection")
-      // TODO delete this option, obtain password from scanner
-      .addOption("pass", "password", true, "Password for database connection")
-      .addOption("h", "hostname", true, "Connect to given host")
-      .addOption("d", "database", true, "Use given database")
-      .addOption("p", "port", true, "Database port")
-      .addOption("o", "output", true, "Path to the output folder")
-      .addOption("g", "generator", true, "Name of the generator");
-  private static final String USAGE = Oligos.class.getSimpleName()
-      + " -u <user> -h <host> -d <database> -p <port> column [column]";
-  private static final String HEADER = Oligos.class.getSimpleName()
-      + " is a application to infer statistical information from a database catalog.";
 
   public static boolean isIncremetalType(TypeInfo type) {
     @SuppressWarnings("serial")
@@ -80,19 +65,6 @@ public class Oligos {
     } else {
       return false;
     }
-  }
-
-  public static InputSchema validateSchema(final InputSchema input
-      , final MetaConnector connector) throws SQLException {
-    InputSchema validatedSchema = new InputSchema();
-    for (ColumnId columnId : input) {
-      if (connector.hasColumn(columnId)) {
-        validatedSchema.addColumn(columnId);
-      } else {
-        LOGGER.warn(columnId.getQualifiedName() + " does not exist!");
-      }
-    }
-    return validatedSchema;
   }
 
   public static ColumnProfiler<?> getProfiler(final ColumnId columnId, final TypeInfo type
@@ -155,157 +127,77 @@ public class Oligos {
   public static void main(String[] args) throws TypeNotSupportedException {
     BasicConfigurator.configure();
     LOGGER.setLevel(Level.ALL);
-    CommandLineParser parser = new PosixParser();
-    CommandLine cmd = null;
-    HelpFormatter formatter = new HelpFormatter();
 
+    CommandLineInterface cli = new CommandLineInterface(args);
     try {
-      cmd = parser.parse(OPTS, args);
-      if (checkOptions(cmd, formatter)) {
-        // get database credentials
-        String username = cmd.getOptionValue("username");
-        String hostname = cmd.getOptionValue("hostname");
-        int port = Integer.parseInt(cmd.getOptionValue("port"));
-        // TODO delete this option
-        String password = cmd.getOptionValue("password");
-        // get output information
-        File outputDir = new File(cmd.getOptionValue("output"));
-        String generatorName = cmd.getOptionValue("generator");
-        // TODO use this method to get the password
-        // Scanner scanner = new Scanner(System.in);
-        // pass = scanner.next();
-        // get profiling information
-        String database = cmd.getOptionValue("database");
-        // TODO get this from user
-        //String schemaName = "DB2INST2";
-        //String table = cmd.getOptionValue("table");
+      cli.parse();
+      JdbcConnector jdbcConnector = cli.getJdbcConnector();
+      jdbcConnector.connect(cli.getUsername(), cli.getPassword());
+      MetaConnector metaConnector = new Db2MetaConnector(jdbcConnector);
+      // validating schema
+      LOGGER.info("Validating input schema ...");
+      SparseSchema sparseSchema = cli.getInputSchema();
+      DenseSchema inputSchema = DbUtils.populateSchema(sparseSchema,
+          jdbcConnector);
 
-        // get the columns
-        InputSchema inputSchema = new InputSchema();
-        String[] columns = cmd.getArgs();
-        for (String col : columns) {
-          System.out.println(col);
-          String[] ref = col.split("\\.");
-          if (ref.length == 3) {
-            String schema = ref[0];
-            String table = ref[1];
-            String column = ref[2];
-            inputSchema.addColumn(schema, table, column);
-          } else {
-            LOGGER.error("Fully qualified column names");
-          }
-        }
-
-        JdbcConnector jdbcConnector = new JdbcConnector(hostname, port, database
-            , JdbcConnector.IBM_JDBC_V4);
-        jdbcConnector.connect(username, password);
-        MetaConnector metaConnector = new Db2MetaConnector(jdbcConnector);
-        // validating schema
-        LOGGER.info("Validating input schema ...");
-        InputSchema validatedSchema = validateSchema(inputSchema, metaConnector);
-
-        // obtaining type information/ column meta data
-        LOGGER.info("Retrieving column meta data ...");
-        Map<ColumnId, TypeInfo> columnTypes = Maps.newLinkedHashMap();
-        for (ColumnId columnId : validatedSchema) {
-          TypeInfo type = metaConnector.getColumnType(columnId);
-          columnTypes.put(columnId, type);
-        }
-        
-        // creating connectors and profilers
-        LOGGER.info("Establashing database connection ...");
-        SchemaConnector schemaConnector = new Db2SchemaConnector(jdbcConnector);
-        TableConnector tableConnector = new Db2TableConnector(jdbcConnector);
-        Set<SchemaProfiler> profilers = Sets.newLinkedHashSet();
-        for (String schema : validatedSchema.schemas()) {
-          SchemaProfiler schemaProfiler = new SchemaProfiler(schema, schemaConnector);
-          profilers.add(schemaProfiler);
-          for (String table : validatedSchema.tables(schema)) {
-            TableProfiler tableProfiler = new TableProfiler(schema, table, tableConnector);
-            schemaProfiler.add(tableProfiler);
-            for (String column : validatedSchema.columns(schema, table)) {
-              ColumnId columnId = new ColumnId(schema, table, column);
-              TypeInfo type = columnTypes.get(columnId);
-              ColumnProfiler<?> columnProfiler =
-                  getProfiler(columnId, type, jdbcConnector, metaConnector);
-              tableProfiler.addColumnProfiler(columnProfiler);
-            }
-          }
-        }
-        
-        // profiling statistical data
-        LOGGER.info("Profiling schema ...");
-        Set<Schema> profiledSchemas = Sets.newLinkedHashSet();
-        for (SchemaProfiler schemaProfiler : profilers) {
-          Schema profiledSchema = schemaProfiler.profile();
-          profiledSchemas.add(profiledSchema);
-        }
-        
-        LOGGER.info("Generating generator specification ...");
-        for (Schema schema : profiledSchemas) {
-          MyriadWriter writer = new MyriadWriter(schema, outputDir, generatorName);
-          writer.write();
-        }
-        
-        jdbcConnector.close();
+      // obtaining type information/ column meta data
+      LOGGER.info("Retrieving column meta data ...");
+      Map<ColumnId, TypeInfo> columnTypes = Maps.newLinkedHashMap();
+      for (ColumnId columnId : inputSchema) {
+        TypeInfo type = metaConnector.getColumnType(columnId);
+        columnTypes.put(columnId, type);
       }
-    } catch (ParseException e) {
-      formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
+
+      // creating connectors and profilers
+      LOGGER.info("Establashing database connection ...");
+      SchemaConnector schemaConnector = new Db2SchemaConnector(jdbcConnector);
+      TableConnector tableConnector = new Db2TableConnector(jdbcConnector);
+      Set<SchemaProfiler> profilers = Sets.newLinkedHashSet();
+      for (String schema : inputSchema.schemas()) {
+        SchemaProfiler schemaProfiler = new SchemaProfiler(schema,
+            schemaConnector);
+        profilers.add(schemaProfiler);
+        for (String table : inputSchema.tablesIn(schema)) {
+          TableProfiler tableProfiler = new TableProfiler(schema, table,
+              tableConnector);
+          schemaProfiler.add(tableProfiler);
+          for (String column : inputSchema.columnsIn(schema, table)) {
+            ColumnId columnId = new ColumnId(schema, table, column);
+            TypeInfo type = columnTypes.get(columnId);
+            ColumnProfiler<?> columnProfiler = getProfiler(columnId, type,
+                jdbcConnector, metaConnector);
+            tableProfiler.addColumnProfiler(columnProfiler);
+          }
+        }
+      }
+
+      // profiling statistical data
+      LOGGER.info("Profiling schema ...");
+      Set<Schema> profiledSchemas = Sets.newLinkedHashSet();
+      for (SchemaProfiler schemaProfiler : profilers) {
+        Schema profiledSchema = schemaProfiler.profile();
+        profiledSchemas.add(profiledSchema);
+      }
+
+      LOGGER.info("Generating generator specification ...");
+      File outputDir = cli.getOutputDirectory();
+      String generatorName = cli.getGeneratorName();
+      for (Schema schema : profiledSchemas) {
+        MyriadWriter writer = new MyriadWriter(schema, outputDir, generatorName);
+        writer.write();
+      }
+
+      jdbcConnector.close();
     } catch (SQLException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+      LOGGER.error(e.getLocalizedMessage());
+      LOGGER.debug(ExceptionUtils.getStackTrace(e));
     } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+      LOGGER.error(e.getLocalizedMessage());
+      LOGGER.debug(ExceptionUtils.getStackTrace(e));
+    } catch (ParseException e) {
+      LOGGER.error(e.getMessage());
+      cli.printHelpMessage();
     }
   }
   
-  public static boolean checkOptions(CommandLine cmd, HelpFormatter formatter) {
-    if (cmd.hasOption("help")) {
-      formatter.printHelp(USAGE, HEADER, OPTS, "");
-      return false;
-    }
-    if (!cmd.hasOption("username")) {
-      System.out
-          .println("Please specify a username for the database connection");
-      formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
-      return false;
-    }
-    if (!cmd.hasOption("hostname")) {
-      System.out
-          .println("Please specify a hostname for the database connection");
-      formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
-      return false;
-    }
-    if (!cmd.hasOption("database")) {
-      System.out
-          .println("Please specify a database for the database connection");
-      formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
-      return false;
-    }
-    if (!cmd.hasOption("port")) {
-      System.out.println("Please specify a port for the database connection");
-      formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
-      return false;
-    }
-    if (!cmd.hasOption("generator")) {
-      System.out.println("Please specify data generator name");
-      formatter.printHelp(USAGE, HEADER, OPTS, "");
-      return false;
-    }
-    if (!cmd.hasOption("output")) {
-      System.out.println("Please specify output directory");
-      formatter.printHelp(USAGE, HEADER, OPTS, "");
-      return false;
-    }
-    // TODO delete this option
-    if (!cmd.hasOption("password")) {
-      System.out
-          .println("Please specify a password for the database connection");
-      formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
-      return false;
-    }
-    
-    return true;
-  }
 }

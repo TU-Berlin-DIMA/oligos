@@ -6,6 +6,10 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collection;
+import java.util.List;
+
+import com.google.common.collect.Lists;
 
 public class JdbcConnector {
   
@@ -19,6 +23,7 @@ public class JdbcConnector {
   private final String dbDriver;
 
   private Connection connection;
+  private DatabaseMetaData metaData;
   
   public JdbcConnector(final String hostname, final int port, final String database
       , final String dbDriver) {
@@ -26,6 +31,7 @@ public class JdbcConnector {
     this.port = port;
     this.database = database;
     this.dbDriver = dbDriver;
+    this.metaData = null;
   }
 
   public String getConnectionString() {
@@ -36,6 +42,7 @@ public class JdbcConnector {
     try {
       Class.forName(dbDriver);
       connection = DriverManager.getConnection(getConnectionString(), user, pass);
+      metaData = connection.getMetaData();
       return true;
     } catch (ClassNotFoundException e) {
       System.err.println("Could not find JDBC DB2 Driver " + dbDriver);
@@ -47,9 +54,56 @@ public class JdbcConnector {
     connection.close();
   }
 
+  public Collection<String> getSchemas() throws SQLException {
+    List<String> schemas = Lists.newArrayList();
+    ResultSet result = metaData.getSchemas();
+    while (result.next()) {
+      String schema = result.getString("TABLE_SCHEM");
+      schemas.add(schema);
+    }
+    return schemas;
+  }
+
+  public Collection<String> getTables(final String schema) throws SQLException {
+    ResultSet result = metaData.getTables(null, schema, null, null);
+    List<String> tables = Lists.newArrayList();
+    while (result.next()) {
+      String table = result.getString("TABLE_NAME");
+      tables.add(table);
+    }
+    return tables;
+  }
+
+  public Collection<String> getColumns(final String schema, final String table) throws SQLException {
+    ResultSet result = metaData.getColumns(null, schema, table, null);
+    List<String> columns = Lists.newArrayList();
+    while (result.next()) {
+      String column = result.getString("COLUMN_NAME");
+      columns.add(column);
+    }
+    return columns;
+  }
+
+  public boolean checkSchema(final String schema) throws SQLException {
+    ResultSet result = metaData.getSchemas(null, schema);
+    if (result.next()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  public boolean checkTable(final String schema, final String table) throws SQLException {
+    ResultSet result = metaData.getTables(null, schema, table, null);
+    if (result.next()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   public boolean checkColumn(final String schema, final String table, final String column) 
       throws SQLException {
-    DatabaseMetaData metaData = connection.getMetaData();
     ResultSet result = metaData.getColumns(null, schema, table, column);
     if (result.next()) {
       return true;

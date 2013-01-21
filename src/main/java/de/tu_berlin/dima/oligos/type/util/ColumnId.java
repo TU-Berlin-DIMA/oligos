@@ -1,8 +1,9 @@
 package de.tu_berlin.dima.oligos.type.util;
 
 import com.google.common.base.Objects;
+import com.google.common.collect.ComparisonChain;
 
-public class ColumnId {
+public class ColumnId implements Comparable<ColumnId> {
   private final String schema;
   private final String table;
   private final String column;
@@ -12,7 +13,7 @@ public class ColumnId {
     this.table = table;
     this.column = column;
   }
-  
+
   public String getSchema() {
     return schema;
   }
@@ -76,5 +77,39 @@ public class ColumnId {
   @Override
   public String toString() {
     return schema + "." + table + "." + column;
+  }
+
+  @Override
+  public int compareTo(ColumnId other) {
+    return ComparisonChain.start()
+        .compare(this.schema, other.schema)
+        .compare(this.table, other.table)
+        .compare(this.column, other.column)
+        .result();
+  }
+
+  public static class ColumnIdBuilder {
+    public String schema;
+    public String table;
+    public String column;
+
+    public ColumnIdBuilder setSchema(final String schema) {
+      this.schema = schema;
+      return this;
+    }
+
+    public ColumnIdBuilder setTable(final String table) {
+      this.table = table;
+      return this;
+    }
+
+    public ColumnIdBuilder setColumn(final String column) {
+      this.column = column;
+      return this;
+    }
+
+    public ColumnId build() {
+      return new ColumnId(schema, table, column);
+    }
   }
 }
