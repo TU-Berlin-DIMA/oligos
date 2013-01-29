@@ -3,8 +3,8 @@ package de.tu_berlin.dima.oligos;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.SQLException;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -38,10 +38,10 @@ import de.tu_berlin.dima.oligos.stat.Schema;
 import de.tu_berlin.dima.oligos.type.util.ColumnId;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.operator.CharOperator;
-import de.tu_berlin.dima.oligos.type.util.operator.DateOperator;
-import de.tu_berlin.dima.oligos.type.util.operator.DecimalOperator;
-import de.tu_berlin.dima.oligos.type.util.operator.IntegerOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
+import de.tu_berlin.dima.oligos.type.util.operator.date.DateOperator;
+import de.tu_berlin.dima.oligos.type.util.operator.numerical.BigDecimalOperator;
+import de.tu_berlin.dima.oligos.type.util.operator.numerical.IntegerOperator;
 import de.tu_berlin.dima.oligos.type.util.parser.CharParser;
 import de.tu_berlin.dima.oligos.type.util.parser.DateParser;
 import de.tu_berlin.dima.oligos.type.util.parser.DecimalParser;
@@ -99,7 +99,7 @@ public class Oligos {
           schema, table, column, typeName, isEnum, connector, op, p);
     } else if (typeName.equals("decimal")) {
       Parser<BigDecimal> p = new DecimalParser();
-      Operator<BigDecimal> op = new DecimalOperator(type.getScale());
+      Operator<BigDecimal> op = new BigDecimalOperator();
       ColumnConnector<BigDecimal> connector = new Db2ColumnConnector<BigDecimal>(
           jdbcConnector, schema, table, column, p); 
       profiler = new ColumnProfiler<BigDecimal>(
@@ -130,7 +130,9 @@ public class Oligos {
 
     CommandLineInterface cli = new CommandLineInterface(args);
     try {
-      cli.parse();
+      if (!cli.parse()) {
+        System.exit(2);
+      }
       JdbcConnector jdbcConnector = cli.getJdbcConnector();
       jdbcConnector.connect(cli.getUsername(), cli.getPassword());
       MetaConnector metaConnector = new Db2MetaConnector(jdbcConnector);

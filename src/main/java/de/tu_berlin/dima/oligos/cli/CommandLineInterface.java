@@ -23,9 +23,10 @@ public class CommandLineInterface {
       .addOption("d", "database", true, "Use given database")
       .addOption("p", "port", true, "Database port")
       .addOption("o", "output", true, "Path to the output folder")
-      .addOption("g", "generator", true, "Name of the generator");
-  private static final String USAGE = Oligos.class.getSimpleName()
-      + " -u <user> -h <host> -d <database> -p <port> -g <generator name> SCHEMA";
+      .addOption("g", "generator", true, "Name of the generator")
+      .addOption("", "help", false, "Show help");
+  private static final String USAGE = Oligos.class.getSimpleName() +
+      " -u <user> -h <host> -d <database> -p <port> -g <generator name> SCHEMA";
   private static final String HEADER = Oligos.class.getSimpleName()
       + " is a application to infer statistical information from a database catalog.";
 
@@ -45,7 +46,7 @@ public class CommandLineInterface {
     this.helpFormatter = new HelpFormatter();
   }
 
-  public void parse() throws ParseException {
+  public boolean parse() throws ParseException {
     CommandLineParser parser = new PosixParser();
     commandLine = parser.parse(OPTS, inputString);
     if (checkOptions(commandLine, helpFormatter)) {
@@ -63,6 +64,9 @@ public class CommandLineInterface {
       // get the input schema
       String schemaSequence = StringUtils.join(commandLine.getArgs());
       this.inputSchema = SchemaParser.parse(schemaSequence);
+      return true;
+    } else {
+      return false;
     }
   }
 
