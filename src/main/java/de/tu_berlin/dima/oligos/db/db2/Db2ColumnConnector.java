@@ -96,7 +96,7 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
   public T getMin() throws SQLException {
     ResultSet result = connector.executeQuery(DOMAIN_QUERY, schema, table, column);
     if (result.next()) {
-      T min = parser.fromString(result.getString("low2key"));
+      T min = parser.fromString(result.getString("low2key").replaceAll("'", ""));
       return min;
     } else {
       throw new ColumnDoesNotExistException(schema, table, column);
@@ -106,7 +106,7 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
   public T getMax() throws SQLException {
     ResultSet result = connector.executeQuery(DOMAIN_QUERY, schema, table, column);
     if (result.next()) {
-      T max = parser.fromString(result.getString("high2key"));
+      T max = parser.fromString(result.getString("high2key").replaceAll("'", ""));
       return max;
     } else {
       throw new ColumnDoesNotExistException(schema, table, column);
@@ -121,7 +121,7 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
     while (result.next()) {
       String colvalue = result.getString("colvalue");
       if (colvalue != null) {
-        T value = parser.fromString(colvalue);
+        T value = parser.fromString(colvalue.replaceAll("'", ""));
         long count = result.getLong("valcount");
         mostFrequentValues.put(value, count);
       }
@@ -136,7 +136,7 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
     while (result.next()) {
       String colvalue = result.getString("colvalue");
       if (colvalue != null) {
-        T value = parser.fromString(colvalue);
+        T value = parser.fromString(colvalue.replaceAll("'", ""));
         long count = result.getLong("valcount");
         quantileHistogram.put(value, count);
       }

@@ -4,7 +4,7 @@ public class CharParser implements Parser<Character> {
 
   @Override
   public Character fromString(String value) {
-    return value.charAt(1);
+    return value.charAt(0);
   }
 
   @Override
