@@ -13,9 +13,9 @@ import com.google.common.collect.Lists;
 
 public class JdbcConnector {
   
-  public final static String IBM_JDBC_V4 = "com.ibm.db2.jcc.DB2Driver";
+  public final static String IBM_JDBC_V4 = "db2";
 
-  private final static String JDBC_STRING = "jdbc:db2://%s:%d/%s";
+  private final static String JDBC_STRING = "jdbc:%s://%s:%d/%s";
 
   private final String hostname;
   private final int port;
@@ -35,19 +35,12 @@ public class JdbcConnector {
   }
 
   public String getConnectionString() {
-    return String.format(JDBC_STRING, hostname, port, database);
+    return String.format(JDBC_STRING, dbDriver, hostname, port, database);
   }
 
-  public boolean connect(final String user, final String pass) throws SQLException {
-    try {
-      Class.forName(dbDriver);
-      connection = DriverManager.getConnection(getConnectionString(), user, pass);
-      metaData = connection.getMetaData();
-      return true;
-    } catch (ClassNotFoundException e) {
-      System.err.println("Could not find JDBC DB2 Driver " + dbDriver);
-      return false;
-    } 
+  public void connect(final String user, final String pass) throws SQLException {
+    connection = DriverManager.getConnection(getConnectionString(), user, pass);
+    metaData = connection.getMetaData();
   }
 
   public void close() throws SQLException {
