@@ -5,7 +5,8 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.SQLException;
-import java.util.HashSet;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.util.Map;
 import java.util.Set;
 import org.apache.commons.cli.ParseException;
@@ -40,32 +41,26 @@ import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.operator.CharOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.DateOperator;
+import de.tu_berlin.dima.oligos.type.util.operator.date.TimeOperator;
+import de.tu_berlin.dima.oligos.type.util.operator.date.TimestampOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.BigDecimalOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.IntegerOperator;
+import de.tu_berlin.dima.oligos.type.util.operator.numerical.LongOperator;
+import de.tu_berlin.dima.oligos.type.util.operator.numerical.ShortOperator;
 import de.tu_berlin.dima.oligos.type.util.parser.CharParser;
 import de.tu_berlin.dima.oligos.type.util.parser.DateParser;
-import de.tu_berlin.dima.oligos.type.util.parser.DecimalParser;
+import de.tu_berlin.dima.oligos.type.util.parser.BigDecimalParser;
 import de.tu_berlin.dima.oligos.type.util.parser.IntegerParser;
+import de.tu_berlin.dima.oligos.type.util.parser.LongParser;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
+import de.tu_berlin.dima.oligos.type.util.parser.ShortParser;
 import de.tu_berlin.dima.oligos.type.util.parser.StringParser;
+import de.tu_berlin.dima.oligos.type.util.parser.TimeParser;
+import de.tu_berlin.dima.oligos.type.util.parser.TimestampParser;
 
 public class Oligos {
 
   private static final Logger LOGGER = Logger.getLogger(Oligos.class);
-
-  public static boolean isIncremetalType(TypeInfo type) {
-    @SuppressWarnings("serial")
-    Set<String> types = new HashSet<String>() {{
-      add("integer");
-      add("decimal");
-      add("date");
-    }};
-    if (types.contains(type.getTypeName().toLowerCase())) {
-      return true;
-    } else {
-      return false;
-    }
-  }
 
   public static ColumnProfiler<?> getProfiler(final ColumnId columnId, final TypeInfo type
       , final JdbcConnector jdbcConnector, final MetaConnector metaConnector)
@@ -83,12 +78,47 @@ public class Oligos {
     ColumnProfiler<?> profiler = null;
     String typeName = type.getTypeName().toLowerCase();
     boolean isEnum = metaConnector.isEnumerated(schema, table, column);
-    if (typeName.equals("integer")) {
+    if (typeName.equals("smallint")) {
+      Parser<Short> p = new ShortParser();
+      Operator<Short> op = new ShortOperator();
+      ColumnConnector<Short> connector = new Db2ColumnConnector<Short>(
+          jdbcConnector, schema, table, column, p);      
+      profiler = new ColumnProfiler<Short>(
+          schema, table, column, typeName, isEnum, connector, op, p);
+    } else if (typeName.equals("integer")) {
       Parser<Integer> p = new IntegerParser();
       Operator<Integer> op = new IntegerOperator();
       ColumnConnector<Integer> connector = new Db2ColumnConnector<Integer>(
           jdbcConnector, schema, table, column, p);      
       profiler = new ColumnProfiler<Integer>(
+          schema, table, column, typeName, isEnum, connector, op, p);
+    } else if (typeName.equals("bigint")) {
+      Parser<Long> p = new LongParser();
+      Operator<Long> op = new LongOperator();
+      ColumnConnector<Long> connector = new Db2ColumnConnector<Long>(
+          jdbcConnector, schema, table, column, p);      
+      profiler = new ColumnProfiler<Long>(
+          schema, table, column, typeName, isEnum, connector, op, p);
+    } else if (typeName.equals("decimal")) {
+      Parser<BigDecimal> p = new BigDecimalParser();
+      Operator<BigDecimal> op = new BigDecimalOperator();
+      ColumnConnector<BigDecimal> connector = new Db2ColumnConnector<BigDecimal>(
+          jdbcConnector, schema, table, column, p); 
+      profiler = new ColumnProfiler<BigDecimal>(
+          schema, table, column, typeName, isEnum, connector, op, p);
+    } else if (typeName.equals("timestamp")) {
+      Parser<Timestamp> p = new TimestampParser();
+      Operator<Timestamp> op = new TimestampOperator();
+      ColumnConnector<Timestamp> connector = new Db2ColumnConnector<Timestamp>(
+          jdbcConnector, schema, table, column, p);
+      profiler = new ColumnProfiler<Timestamp>(
+          schema, table, column, typeName, isEnum, connector, op, p);
+    } else if (typeName.equals("time")) {
+      Parser<Time> p = new TimeParser();
+      Operator<Time> op = new TimeOperator();
+      ColumnConnector<Time> connector = new Db2ColumnConnector<Time>(
+          jdbcConnector, schema, table, column, p);
+      profiler = new ColumnProfiler<Time>(
           schema, table, column, typeName, isEnum, connector, op, p);
     } else if (typeName.equals("date")) {
       Parser<Date> p = new DateParser();
@@ -96,13 +126,6 @@ public class Oligos {
       ColumnConnector<Date> connector = new Db2ColumnConnector<Date>(
           jdbcConnector, schema, table, column, p); 
       profiler = new ColumnProfiler<Date>(
-          schema, table, column, typeName, isEnum, connector, op, p);
-    } else if (typeName.equals("decimal")) {
-      Parser<BigDecimal> p = new DecimalParser();
-      Operator<BigDecimal> op = new BigDecimalOperator();
-      ColumnConnector<BigDecimal> connector = new Db2ColumnConnector<BigDecimal>(
-          jdbcConnector, schema, table, column, p); 
-      profiler = new ColumnProfiler<BigDecimal>(
           schema, table, column, typeName, isEnum, connector, op, p);
     } else if (typeName.equals("character")
         && (type.getLength() == 1)) {
@@ -130,6 +153,7 @@ public class Oligos {
 
     CommandLineInterface cli = new CommandLineInterface(args);
     try {
+      // TODO hard exit if the parsing fails!
       if (!cli.parse()) {
         System.exit(2);
       }

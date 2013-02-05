@@ -3,7 +3,7 @@ package de.tu_berlin.dima.oligos.type.util.parser;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-public class DecimalParser implements Parser<BigDecimal> {
+public class BigDecimalParser implements Parser<BigDecimal> {
   
   private final static int DEFAULT_SCALE = 2;
 

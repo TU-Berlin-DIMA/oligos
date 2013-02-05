@@ -8,7 +8,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
-
 import com.google.common.collect.Lists;
 
 public class JdbcConnector {
