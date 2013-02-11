@@ -1,7 +1,7 @@
 package de.tu_berlin.dima.oligos.db.db2;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Map;
 
 import de.tu_berlin.dima.oligos.db.JdbcConnector;
 import de.tu_berlin.dima.oligos.db.MetaConnector;
@@ -65,9 +65,8 @@ public class Db2MetaConnector implements MetaConnector {
   @Override
   public boolean hasStatistics(String schema, String table, String column)
       throws SQLException {
-    ResultSet result = connector.executeQuery(DOMAIN_QUERY, schema, table, column);
-    if (result.next()) {
-      long card = result.getLong("COLCARD");
+    Long card = connector.scalarQuery(DOMAIN_QUERY, "COLCARD", schema, table, column);
+    if (card != null) {
       return (card != -1) ? true : false; 
     } else {
       throw new ColumnDoesNotExistException(schema, table, column);
@@ -85,11 +84,11 @@ public class Db2MetaConnector implements MetaConnector {
   @Override
   public boolean isEnumerated(String schema, String table, String column)
       throws SQLException {
-    ResultSet result = connector.executeQuery(ENUMERATED_QUERY, schema, table, column
-        , schema, table, column);
-    if (result.next()) {
-      long colCard = result.getLong("colcard");
-      int numMostFreq = result.getInt("num_most_frequent");
+    Map<String, Object> result = connector.mapQuery(
+        ENUMERATED_QUERY, schema, table, column, schema, table, column);
+    if (result != null) {
+      long colCard = (Long) result.get("COLCARD");
+      int numMostFreq = (Integer) result.get("NUM_MOST_FREQUENT");
       return colCard <= numMostFreq;
     } else {
       throw new ColumnDoesNotExistException(schema, table, column);
@@ -107,15 +106,7 @@ public class Db2MetaConnector implements MetaConnector {
   @Override
   public TypeInfo getColumnType(final String schema, final String table, final String column)
       throws SQLException {
-    ResultSet result = connector.executeQuery(TYPE_QUERY, schema, table, column);
-    if (result.next()) {
-      String typeName = result.getString("typename");
-      int length = result.getInt("length");
-      int scale = result.getInt("scale");
-      return new TypeInfo(typeName, length, scale);
-    } else {
-      throw new ColumnDoesNotExistException(schema, table, column);
-    }
+    return connector.typeQuery(TYPE_QUERY, schema, table, column);
   }
 
 }

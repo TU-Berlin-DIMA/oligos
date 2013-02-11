@@ -8,7 +8,18 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.dbutils.DbUtils;
+import org.apache.commons.dbutils.QueryRunner;
+import org.apache.commons.dbutils.ResultSetHandler;
+import org.apache.commons.dbutils.handlers.MapHandler;
+import org.apache.commons.dbutils.handlers.ScalarHandler;
+
 import com.google.common.collect.Lists;
+
+import de.tu_berlin.dima.oligos.type.util.TypeInfo;
+import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 
 public class JdbcConnector {
   
@@ -53,6 +64,7 @@ public class JdbcConnector {
       String schema = result.getString("TABLE_SCHEM");
       schemas.add(schema);
     }
+    DbUtils.close(result);
     return schemas;
   }
 
@@ -63,6 +75,7 @@ public class JdbcConnector {
       String table = result.getString("TABLE_NAME");
       tables.add(table);
     }
+    DbUtils.close(result);
     return tables;
   }
 
@@ -73,6 +86,7 @@ public class JdbcConnector {
       String column = result.getString("COLUMN_NAME");
       columns.add(column);
     }
+    DbUtils.close(result);
     return columns;
   }
 
@@ -104,6 +118,7 @@ public class JdbcConnector {
     }
   }
   
+  @Deprecated
   public ResultSet executeQuery(final String query, final Object... parameters) throws SQLException {
     PreparedStatement stmt = connection.prepareStatement(query);
     for (int i = 1; i <= parameters.length; i++) {
@@ -111,5 +126,47 @@ public class JdbcConnector {
     }
     ResultSet result = stmt.executeQuery();
     return result;
+  }
+
+  public <T> T scalarQuery(
+      final String query,
+      final String columnName,
+      final Object... parameters) throws SQLException {
+    ResultSetHandler<T> handler = new ScalarHandler<T>(columnName);
+    QueryRunner runner = new QueryRunner();
+    return runner.query(connection, query, handler, parameters);
+  }
+
+  public Map<String, Object> mapQuery(
+      final String query,
+      final Object... parameters) throws SQLException {
+    ResultSetHandler<Map<String, Object>> handler = new MapHandler();
+    QueryRunner runner = new QueryRunner();
+    return runner.query(connection, query, handler, parameters);
+  }
+
+  public <T> Map<T, Long> histogramQuery(
+      final String query,
+      final String keyColumnName,
+      final String valueColumnName,
+      final Parser<T> parser,
+      final Object...parameters) throws SQLException {
+    ResultSetHandler<Map<T, Long>> handler = new HistogramHandler<T>(keyColumnName, valueColumnName, parser);
+    QueryRunner runner = new QueryRunner();
+    return runner.query(connection, query, handler, parameters);
+  }
+
+  public TypeInfo typeQuery(
+      final String query,
+      final String schema,
+      final String table,
+      final String column) throws SQLException {
+    ResultSetHandler<Map<String, Object>> handler = new MapHandler();
+    Map<String, Object> result = handler.handle(
+        connection.getMetaData().getColumns(null, schema, table, column));
+    String typeName = (String) result.get("TYPE_NAME");
+    int length = (Integer) result.get("COLUMN_SIZE");
+    int scale = (result.get("DECIMAL_DIGITS") != null) ? (Integer) result.get("DECIMAL_DIGITS") : 0;
+    return new TypeInfo(typeName, length, scale);
   }
 }

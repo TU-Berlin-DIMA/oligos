@@ -1,15 +1,13 @@
 package de.tu_berlin.dima.oligos.db.db2;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Set;
-import com.google.common.collect.Maps;
+
 import com.google.common.collect.Sets;
 
 import de.tu_berlin.dima.oligos.db.ColumnConnector;
 import de.tu_berlin.dima.oligos.db.JdbcConnector;
-import de.tu_berlin.dima.oligos.exception.ColumnDoesNotExistException;
 import de.tu_berlin.dima.oligos.type.util.ColumnId;
 import de.tu_berlin.dima.oligos.type.util.Constraint;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
@@ -59,88 +57,49 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
   @Override
   public Set<Constraint> getConstraints() throws SQLException {
     Set<Constraint> constraints = Sets.newHashSet();
-    ResultSet result = connector.executeQuery(CONSTRAINT_QUERY, schema, table, column);
-    if (result.next()) {
-      char con = result.getString("TYPE").charAt(0);
-      if (con == 'U') {
+    String con = connector.scalarQuery(CONSTRAINT_QUERY, "type", schema,
+        table, column);
+    if (con != null) {
+      if (con.equals("U")) {
         constraints.add(Constraint.UNIQUE);
-      } else if (con == 'P') {
+      } else if (con.equals("P")) {
         constraints.add(Constraint.PRIMARY_KEY);
-      } else if (con == 'F') {
+      } else if (con.equals("F")) {
         constraints.add(Constraint.FOREIGN_KEY);
       }
-     }
+    }
     return constraints;
   }
 
   @Override
   public long getNumNulls() throws SQLException {
-    ResultSet result = connector.executeQuery(DOMAIN_QUERY, schema, table, column);
-    if (result.next()) {
-      return result.getLong("numnulls");
-    } else {
-      throw new ColumnDoesNotExistException(schema, table, column);
-    }
+    return connector.scalarQuery(DOMAIN_QUERY, "numnulls", schema, table, column);
   }
 
   @Override
   public long getCardinality() throws SQLException {
-    ResultSet result = connector.executeQuery(DOMAIN_QUERY, schema, table, column);
-    if (result.next()) {
-      return result.getLong("colcard");
-    } else {
-      throw new ColumnDoesNotExistException(schema, table, column);
-    }
+    return connector.scalarQuery(DOMAIN_QUERY, "colcard", schema, table, column);
   }
 
   public T getMin() throws SQLException {
-    ResultSet result = connector.executeQuery(DOMAIN_QUERY, schema, table, column);
-    if (result.next()) {
-      T min = parser.fromString(result.getString("low2key").replaceAll("'", ""));
-      return min;
-    } else {
-      throw new ColumnDoesNotExistException(schema, table, column);
-    }
+    String minStr = connector.scalarQuery(DOMAIN_QUERY, "low2key", schema, table, column);
+    return parser.fromString(minStr.replaceAll("'", ""));
   }
 
   public T getMax() throws SQLException {
-    ResultSet result = connector.executeQuery(DOMAIN_QUERY, schema, table, column);
-    if (result.next()) {
-      T max = parser.fromString(result.getString("high2key").replaceAll("'", ""));
-      return max;
-    } else {
-      throw new ColumnDoesNotExistException(schema, table, column);
-    }
+    String minStr = connector.scalarQuery(DOMAIN_QUERY, "high2key", schema, table, column);
+    return parser.fromString(minStr.replaceAll("'", ""));
   }
 
   @Override
   public Map<T, Long> getMostFrequentValues() throws SQLException {
-    Map<T, Long> mostFrequentValues = Maps.newLinkedHashMap();
-    ResultSet result = connector.executeQuery(MOST_FREQUENT_QUERY, schema,
-        table, column);
-    while (result.next()) {
-      String colvalue = result.getString("colvalue");
-      if (colvalue != null) {
-        T value = parser.fromString(colvalue.replaceAll("'", ""));
-        long count = result.getLong("valcount");
-        mostFrequentValues.put(value, count);
-      }
-    }
-    return mostFrequentValues;
+    return connector.histogramQuery(
+        MOST_FREQUENT_QUERY, "colvalue", "valcount", parser, schema, table, column);
   }
 
   @Override
   public Map<T, Long> getHistogram() throws SQLException {
-    Map<T, Long> quantileHistogram = Maps.newLinkedHashMap();
-    ResultSet result = connector.executeQuery(QUANTILE_HISTOGRAM_QUERY, schema, table, column);
-    while (result.next()) {
-      String colvalue = result.getString("colvalue");
-      if (colvalue != null) {
-        T value = parser.fromString(colvalue.replaceAll("'", ""));
-        long count = result.getLong("valcount");
-        quantileHistogram.put(value, count);
-      }
-    }
-    return quantileHistogram;
+    return connector.histogramQuery(
+        QUANTILE_HISTOGRAM_QUERY, "colvalue", "valcount", parser, schema, table, column);
   }
 }

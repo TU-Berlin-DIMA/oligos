@@ -57,6 +57,11 @@ public class SparseSchema {
     }
   }
 
+  @Override
+  public String toString() {
+    return schemas.toString();
+  }
+
   /*@Override
   public Iterator<ColumnId> iterator() {
     return new Iterator<ColumnId>() {

@@ -1,6 +1,5 @@
 package de.tu_berlin.dima.oligos.db.db2;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import de.tu_berlin.dima.oligos.db.JdbcConnector;
@@ -21,14 +20,7 @@ public class Db2TableConnector implements TableConnector {
 
   @Override
   public long getCardinality(final String schema, final String table) throws SQLException {
-    ResultSet result = connector.executeQuery(QUERY, schema, table);
-    if (result.next()) {
-      long cardinality = result.getLong("card");
-      return cardinality;
-    } else {
-      // TODO create TableDoesNotExistException
-      throw new RuntimeException("Table " + schema + "." + table + " does not exist!");
-    }
+    return connector.scalarQuery(QUERY, "card", schema, table);
   }
 
 }
