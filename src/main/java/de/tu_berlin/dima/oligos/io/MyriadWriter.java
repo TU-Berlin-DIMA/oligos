@@ -229,7 +229,7 @@ public class MyriadWriter implements Writer {
   
   private Element createRecordType(ColumnId columnId, Column<?> colStat) {
     Element field = document.createElement("field");
-    field.setAttribute("name", columnId.getColumn().toLowerCase());
+    field.setAttribute("name", "col_" + columnId.getColumn().toLowerCase());
     if (colStat.isEnumerated()) {
       field.setAttribute("type", "Enum");
       field.setAttribute("enumref", columnId.getQualifiedName().toLowerCase());
@@ -404,7 +404,7 @@ public class MyriadWriter implements Writer {
   }
   
   private String getFieldRef(ColumnId columnId) {
-    return (columnId.getTable() + ":" + columnId.getColumn()).toLowerCase();
+    return (columnId.getTable() + ":" + "col_" + columnId.getColumn()).toLowerCase();
   }
 
   private String getReferenceRef(ColumnId columnId) {
