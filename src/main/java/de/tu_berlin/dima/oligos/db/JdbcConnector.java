@@ -18,6 +18,7 @@ import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import com.google.common.collect.Lists;
 
+import de.tu_berlin.dima.oligos.type.Types;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 
@@ -167,6 +168,8 @@ public class JdbcConnector {
     String typeName = (String) result.get("TYPE_NAME");
     int length = (Integer) result.get("COLUMN_SIZE");
     int scale = (result.get("DECIMAL_DIGITS") != null) ? (Integer) result.get("DECIMAL_DIGITS") : 0;
-    return new TypeInfo(typeName, length, scale);
+    int typeNo = (Integer) result.get("DATA_TYPE");
+    Class<?> type = Types.convert(typeNo, length);
+    return new TypeInfo(typeName, length, scale, type);
   }
 }
