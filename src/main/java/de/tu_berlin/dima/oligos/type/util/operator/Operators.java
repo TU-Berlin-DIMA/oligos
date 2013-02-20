@@ -9,6 +9,20 @@ import java.util.Date;
 
 public final class Operators {
 
+  public static <T> T increment(T value) {
+    @SuppressWarnings("unchecked")
+    Class<T> clazz = (Class<T>) value.getClass();
+    Operator<T> op = OperatorManager.getOperator(clazz);
+    return op.increment(value);
+  }
+
+  public static <T> T decrement(T value) {
+    @SuppressWarnings("unchecked")
+    Class<T> clazz = (Class<T>) value.getClass();
+    Operator<T> op = OperatorManager.getOperator(clazz);
+    return op.decrement(value);
+  }
+
   @SuppressWarnings("unchecked")
   public static <T extends Number> T increment(T number) {
     if (number instanceof Byte) {

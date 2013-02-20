@@ -3,6 +3,7 @@ package de.tu_berlin.dima.oligos;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Time;
@@ -40,10 +41,13 @@ import de.tu_berlin.dima.oligos.type.util.ColumnId;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.operator.CharOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
+import de.tu_berlin.dima.oligos.type.util.operator.OperatorManager;
 import de.tu_berlin.dima.oligos.type.util.operator.date.DateOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.TimeOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.TimestampOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.BigDecimalOperator;
+import de.tu_berlin.dima.oligos.type.util.operator.numerical.BigIntegerOperator;
+import de.tu_berlin.dima.oligos.type.util.operator.numerical.ByteOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.IntegerOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.LongOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.ShortOperator;
@@ -61,6 +65,23 @@ import de.tu_berlin.dima.oligos.type.util.parser.TimestampParser;
 public class Oligos {
 
   private static final Logger LOGGER = Logger.getLogger(Oligos.class);
+
+  public static void setUpOperators() {
+    OperatorManager.putOperator(Byte.class, new ByteOperator());
+    OperatorManager.putOperator(Short.class, new ShortOperator());
+    OperatorManager.putOperator(Integer.class, new IntegerOperator());
+    OperatorManager.putOperator(Long.class, new LongOperator());
+    OperatorManager.putOperator(Timestamp.class, new TimestampOperator());
+    OperatorManager.putOperator(Time.class, new TimeOperator());
+    OperatorManager.putOperator(Date.class, new DateOperator());
+    OperatorManager.putOperator(BigInteger.class, new BigIntegerOperator());
+    OperatorManager.putOperator(BigDecimal.class, new BigDecimalOperator());
+    OperatorManager.putOperator(Character.class, new CharOperator());
+  }
+
+  /*public static ColumnProfiler<?> getProfiler() {
+    
+  }*/
 
   public static ColumnProfiler<?> getProfiler(final ColumnId columnId, final TypeInfo type
       , final JdbcConnector jdbcConnector, final MetaConnector metaConnector)
@@ -150,6 +171,8 @@ public class Oligos {
   public static void main(String[] args) throws TypeNotSupportedException {
     BasicConfigurator.configure();
     LOGGER.setLevel(Level.ALL);
+
+    setUpOperators();
 
     CommandLineInterface cli = new CommandLineInterface(args);
     try {

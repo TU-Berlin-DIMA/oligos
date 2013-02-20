@@ -8,6 +8,7 @@ import com.google.common.io.Files;
 import de.tu_berlin.dima.oligos.stat.Column;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.Bucket;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.Histogram;
+import de.tu_berlin.dima.oligos.type.util.operator.Operators;
 
 public class DistributionWriter implements Writer {
 
@@ -66,7 +67,7 @@ public class DistributionWriter implements Writer {
     strBld.append('\n');
     for (Bucket<?> bucket : distribution.getNonExactValues()) {
       String lowerBound = column.asString(bucket.getLowerBound());
-      String upperBound = column.asString(bucket.getUpperBound());
+      String upperBound = column.asString(Operators.increment(bucket.getUpperBound()));
       double probability = bucket.getFrequency() / (double) numTotal;
       if (!isEnum) {
         strBld.append(getBucketEntry(probability, lowerBound, upperBound));
