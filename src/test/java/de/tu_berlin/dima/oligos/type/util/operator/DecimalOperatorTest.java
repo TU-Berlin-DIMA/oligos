@@ -8,6 +8,8 @@ import java.util.Random;
 import org.junit.Before;
 import org.junit.Test;
 
+import de.tu_berlin.dima.oligos.type.util.operator.numerical.BigDecimalOperator;
+
 public class DecimalOperatorTest {
   
   private static final long SEED = 0xDEADBEEFl;
@@ -15,7 +17,7 @@ public class DecimalOperatorTest {
   private static final int ITERATIONS = 100;
   
   private final Random rand = new Random(SEED);
-  private final Operator<BigDecimal> op = new DecimalOperator(SCALE);
+  private final Operator<BigDecimal> op = new BigDecimalOperator();
   private BigDecimal first;
   private BigDecimal second;
   private BigDecimal third;
@@ -57,20 +59,6 @@ public class DecimalOperatorTest {
   }
 
   @Test
-  public void testIncrementStep() {
-    fail("Not yet implemented");
-    /*
-    int scale = rand.nextInt() % 10;
-    BigDecimal step = BigDecimal.valueOf(rand.nextLong(), scale);
-    for (int i = 0; i < ITERATIONS; i++) {
-      BigDecimal orig = BigDecimal.valueOf(rand.nextLong(), scale);
-      BigDecimal expected = orig.add(step);
-      assertEquals(expected, op.increment(orig, step));
-    }
-    */
-  }
-
-  @Test
   public void testDecrement() {
     BigDecimal step = BigDecimal.valueOf(1, SCALE);
     for (int i = 0; i < ITERATIONS; i++) {
@@ -78,11 +66,6 @@ public class DecimalOperatorTest {
       BigDecimal expected = orig.subtract(step);
       assertEquals(expected, op.decrement(orig));
     }
-  }
-
-  @Test
-  public void testDecrementStep() {
-    fail("Not yet implemented");
   }
 
   @Test
