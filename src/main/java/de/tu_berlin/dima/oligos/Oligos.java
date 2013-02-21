@@ -187,7 +187,7 @@ public class Oligos {
       LOGGER.info("Validating input schema ...");
       SparseSchema sparseSchema = cli.getInputSchema();
       DenseSchema inputSchema = DbUtils.populateSchema(sparseSchema,
-          jdbcConnector);
+          jdbcConnector, metaConnector);
 
       // obtaining type information/ column meta data
       LOGGER.info("Retrieving column meta data ...");

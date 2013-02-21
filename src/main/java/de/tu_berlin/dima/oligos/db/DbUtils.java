@@ -4,8 +4,9 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Map;
 
-import com.google.common.collect.Maps;
+import org.apache.log4j.Logger;
 
+import com.google.common.collect.Maps;
 import de.tu_berlin.dima.oligos.DenseSchema;
 import de.tu_berlin.dima.oligos.SparseSchema;
 import de.tu_berlin.dima.oligos.type.util.ColumnId;
@@ -33,7 +34,7 @@ public class DbUtils {
     return denseSchema;
   }
 
-  public static DenseSchema populateSchema(SparseSchema sparseSchema, JdbcConnector connector)
+  public static DenseSchema populateSchema(SparseSchema sparseSchema, JdbcConnector connector, MetaConnector metaConnector)
       throws SQLException {
     DenseSchema denseSchema = new DenseSchema();
     for (String schema : sparseSchema.schemas()) {
@@ -52,7 +53,13 @@ public class DbUtils {
             }
             for (String column : columns) {
               if (connector.checkColumn(schema, table, column)) {
-                denseSchema.addColumn(new ColumnId(schema, table, column));
+                if (metaConnector.hasStatistics(schema, table, column)) {
+                  denseSchema.addColumn(new ColumnId(schema, table, column));
+                } else {
+                  Logger logger = Logger.getLogger(DbUtils.class);
+                  logger.warn(
+                      "No statistics available for " + schema + "." + table + "." + column);
+                }
               }
             }
           }
