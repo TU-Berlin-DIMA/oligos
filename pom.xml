@@ -33,12 +33,14 @@
 		<groupId>com.ibm.db2</groupId>
 		<artifactId>jdbc</artifactId>
 		<version>4.0</version>
+		<scope>provided</scope>
 	</dependency>
-	<dependency>
+	<!--<dependency>
 		<groupId>com.ibm.db2</groupId>
 		<artifactId>jdbc_license</artifactId>
 		<version>4.0</version>
-	</dependency>
+		<scope>provided</scope>
+	</dependency>-->
 	
 	<dependency>
 		<groupId>joda-time</groupId>
