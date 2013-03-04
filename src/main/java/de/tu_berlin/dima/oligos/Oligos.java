@@ -16,7 +16,6 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import de.tu_berlin.dima.oligos.cli.CommandLineInterface;
@@ -177,6 +176,7 @@ public class Oligos {
     CommandLineInterface cli = new CommandLineInterface(args);
     try {
       // TODO hard exit if the parsing fails!
+      // better catch exceptions and log them
       if (!cli.parse()) {
         System.exit(2);
       }
@@ -186,8 +186,10 @@ public class Oligos {
       // validating schema
       LOGGER.info("Validating input schema ...");
       SparseSchema sparseSchema = cli.getInputSchema();
+      LOGGER.trace("User specified schema " + sparseSchema);
       DenseSchema inputSchema = DbUtils.populateSchema(sparseSchema,
           jdbcConnector, metaConnector);
+      LOGGER.trace("Populated and validated schema " + inputSchema);
 
       // obtaining type information/ column meta data
       LOGGER.info("Retrieving column meta data ...");
