@@ -7,8 +7,8 @@ import java.util.Set;
 
 import de.tu_berlin.dima.oligos.db.ColumnConnector;
 import de.tu_berlin.dima.oligos.stat.Column;
+import de.tu_berlin.dima.oligos.stat.distribution.histogram.CustomHistogram;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.Histogram;
-import de.tu_berlin.dima.oligos.stat.distribution.histogram.Histograms;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.QuantileHistogram;
 import de.tu_berlin.dima.oligos.type.util.Constraint;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
@@ -38,20 +38,23 @@ public class ColumnProfiler<T> implements Profiler<Column<T>> {
     this.parser = parser;
   }
 
+  private T getMin(T low2key, Set<T> colvalues) {
+    T min = low2key;
+    for (T val : colvalues) {
+      min = operator.min(min, val);
+    }
+    return min;
+  }
+
   public QuantileHistogram<T> getQuantileHistogram() {
     try {
-      T min = connector.getMin();
+      Map<T, Long> rawHist = connector.getHistogram();
+      T min = getMin(connector.getMin(), rawHist.keySet());
       QuantileHistogram<T> histogram = new QuantileHistogram<T>(min, operator);
-      Map<T, Long> qHist = connector.getHistogram();
-      long oldCount = 0l;
-      for (Entry<T, Long> entry : qHist.entrySet()) {
+      for (Entry<T, Long> entry : rawHist.entrySet()) {
         T value = entry.getKey();
         long count = entry.getValue();
-        if (value.equals(min)) {
-          histogram.setMin(operator.decrement(min));
-        }
-        histogram.addBound(value, count - oldCount);
-        oldCount = count;
+        histogram.addBound(value, count);
       }
       return histogram;
     } catch (SQLException e) {
@@ -66,18 +69,15 @@ public class ColumnProfiler<T> implements Profiler<Column<T>> {
       T max = connector.getMax();
       long cardinality = connector.getCardinality();
       long numNulls = connector.getNumNulls();
-      QuantileHistogram<T> quantileHistogram = new QuantileHistogram<T>(min, operator);
-      if (!isEnum) {
-        Map<T, Long> rawHistogram = connector.getHistogram();
-        for (Entry<T, Long> e : rawHistogram.entrySet()) {
-          T upperBound = e.getKey();
-          long frequency = e.getValue();
-          quantileHistogram.addBound(upperBound, frequency);
-        }        
+      Histogram<T> distribution = null;
+      if (isEnum) {
+        distribution = new CustomHistogram<T>(operator);
+        for (Entry<T, Long> e : connector.getMostFrequentValues().entrySet()) {
+          distribution.add(e.getKey(), e.getKey(), e.getValue());
+        }
+      } else {
+        distribution = getQuantileHistogram();
       }
-      Map<T, Long> mostFrequentValues = connector.getMostFrequentValues();
-      Histogram<T> distribution = Histograms.combineHistograms(
-          quantileHistogram, mostFrequentValues, operator);
       return new Column<T>(schema, table, column, type, constraints, min, max,
           cardinality, numNulls, distribution, parser);
     } catch (SQLException e) {

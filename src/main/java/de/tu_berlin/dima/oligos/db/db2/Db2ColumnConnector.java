@@ -2,8 +2,10 @@ package de.tu_berlin.dima.oligos.db.db2;
 
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import de.tu_berlin.dima.oligos.db.ColumnConnector;
@@ -73,12 +75,12 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
 
   @Override
   public long getNumNulls() throws SQLException {
-    return connector.scalarQuery(DOMAIN_QUERY, "numnulls", schema, table, column);
+    return connector.<Long>scalarQuery(DOMAIN_QUERY, "numnulls", schema, table, column);
   }
 
   @Override
   public long getCardinality() throws SQLException {
-    return connector.scalarQuery(DOMAIN_QUERY, "colcard", schema, table, column);
+    return connector.<Long>scalarQuery(DOMAIN_QUERY, "colcard", schema, table, column);
   }
 
   public T getMin() throws SQLException {
@@ -99,7 +101,16 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
 
   @Override
   public Map<T, Long> getHistogram() throws SQLException {
-    return connector.histogramQuery(
+    Map<T, Long> rawHist = connector.histogramQuery(
         QUANTILE_HISTOGRAM_QUERY, "colvalue", "valcount", parser, schema, table, column);
+    Map<T, Long> normHist = Maps.newLinkedHashMap();
+    long lastFreq = 0L;
+    for (Entry<T, Long> e : rawHist.entrySet()) {
+      T value = e.getKey();
+      long cumCount = e.getValue();
+      normHist.put(value, cumCount - lastFreq);
+      lastFreq = cumCount;
+    }
+    return normHist;
   }
 }

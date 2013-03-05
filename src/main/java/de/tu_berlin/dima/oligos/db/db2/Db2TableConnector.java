@@ -20,7 +20,7 @@ public class Db2TableConnector implements TableConnector {
 
   @Override
   public long getCardinality(final String schema, final String table) throws SQLException {
-    return connector.scalarQuery(QUERY, "card", schema, table);
+    return connector.<Long>scalarQuery(QUERY, "card", schema, table);
   }
 
 }
