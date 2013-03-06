@@ -35,6 +35,8 @@ public class MyriadWriter implements Writer {
     put("decimal", "Decimal");
     put("date", "Date");
     put("character", "String");
+    put("char", "String");
+    put("varchar", "String");
   }};
   
   private final String generatorName;
@@ -65,10 +67,10 @@ public class MyriadWriter implements Writer {
   
   public void write() throws IOException {
     String schemaName = schema.getName();
-    Node parameters = document.getElementsByTagName("parameters").item(0);
-    Node functions = document.getElementsByTagName("functions").item(0);
-    Node enumSets = document.getElementsByTagName("enum_sets").item(0);
-    Node recordSequences = document.getElementsByTagName("record_sequences").item(0);
+    Node parameters = document.getElementsByTagName(Tag.Parameters.getName()).item(0);
+    Node functions = document.getElementsByTagName(Tag.Functions.getName()).item(0);
+    Node enumSets = document.getElementsByTagName(Tag.EnumSets.getName()).item(0);
+    Node recordSequences = document.getElementsByTagName(Tag.RecordSequences.getName()).item(0);
     for (Table table : schema) {
       String tableName = table.getTable();
       long tableCardinality = table.getCardinality();
@@ -76,6 +78,7 @@ public class MyriadWriter implements Writer {
       parameters.appendChild(parameter);
       Element randomSequence = createRandomSequence(tableName);
       Node recordType = randomSequence.getElementsByTagName("record_type").item(0);
+      Node outputFormat = randomSequence.getElementsByTagName("output_format").item(0);
       Node setterChain = randomSequence.getElementsByTagName("setter_chain").item(0);
       recordSequences.appendChild(randomSequence);
       for (Column<?> column : table) {
@@ -100,11 +103,15 @@ public class MyriadWriter implements Writer {
         // create record types for current column
         Element field = createRecordType(columnId, column);
         recordType.appendChild(field);
+        // create output format for current column
+        // TODO 
+        Element argOutFormat = createKeyTypeRefArgument("field", "field_ref", getFieldRef(columnId));
+        outputFormat.appendChild(argOutFormat);
         // create setters for current column
         if (schema.isReference(columnId)) {
           Element reference = createReference(columnId);
           recordType.appendChild(reference);
-          Element refSetter = createReferenceSetter(columnId);
+          Element refSetter = createReferenceSetter(columnId, column);
           setterChain.appendChild(refSetter);
         }
         Element setter = createSetter(columnId, column);
@@ -116,6 +123,11 @@ public class MyriadWriter implements Writer {
     } catch (TransformerException e) {
       LOGGER.error("Error while transforming XML document.", e);
     }
+  }
+
+  private Element createElement(Tag tag) {
+    String tagName = tag.getName();
+    return document.createElement(tagName);
   }
   
   /**
@@ -130,22 +142,22 @@ public class MyriadWriter implements Writer {
    * </pre></code>
    */
   private void createSkeleton() {
-    Element generator_prototype = document.createElement("generator_prototype");
+    Element generator_prototype = createElement(Tag.GeneratorPrototype);
     generator_prototype.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
     generator_prototype.setAttribute("xmlns", "http://www.dima.tu-berlin.de/myriad/prototype");
-    Element parameters = document.createElement("parameters");
+    Element parameters = createElement(Tag.Parameters);
     generator_prototype.appendChild(parameters);
-    Element functions = document.createElement("functions");
+    Element functions = createElement(Tag.Functions);
     generator_prototype.appendChild(functions);
-    Element enum_sets = document.createElement("enum_sets");
+    Element enum_sets = createElement(Tag.EnumSets);
     generator_prototype.appendChild(enum_sets);
-    Element record_sequences = document.createElement("record_sequences");
+    Element record_sequences = createElement(Tag.RecordSequences);
     generator_prototype.appendChild(record_sequences);
     document.appendChild(generator_prototype);
   }
   
   private Element createParameter(String key, long value) {
-    Element parameter = document.createElement("parameter");
+    Element parameter = createElement(Tag.Parameter);
     parameter.setAttribute("key", getBaseCardinalityParam(key, false));
     parameter.setTextContent(String.valueOf(value));    
     return parameter;
@@ -153,7 +165,7 @@ public class MyriadWriter implements Writer {
   
   private Element createFunction(ColumnId columnId, Column<?> columnStat) {
     //Parser<?> parser = parserManager.getParser(columnId);
-    Element func = document.createElement("function");
+    Element func = createElement(Tag.Function);
     String funcName = getFunctionKey(columnId);
     String funcType = "";
     String colType = getMyriadType(columnStat.getType());
@@ -161,11 +173,11 @@ public class MyriadWriter implements Writer {
       funcType = "uniform_probability[" + colType + "]";
       String min = columnStat.getMin().toString();
       String max = "${%" + columnId.getTable().toLowerCase() + ".sequence.cardinality% + " + min + "}";
-      Element argMin = document.createElement("argument");
+      Element argMin = createElement(Tag.Argument);
       argMin.setAttribute("key", "x_min");
       argMin.setAttribute("type", colType);
       argMin.setAttribute("value", min);
-      Element argMax = document.createElement("argument");
+      Element argMax = createElement(Tag.Argument);
       argMax.setAttribute("key", "x_max");
       argMax.setAttribute("type", colType);
       argMax.setAttribute("value", max);
@@ -173,14 +185,14 @@ public class MyriadWriter implements Writer {
       func.appendChild(argMax);
     } else if (columnStat.isEnumerated()) {
       funcType = "combined_probability[Enum]";
-      Element arg = document.createElement("argument");
+      Element arg = createElement(Tag.Argument);
       arg.setAttribute("key", "path");
       arg.setAttribute("type", "String");
       arg.setAttribute("value", getDistributionPath(columnId));
       func.appendChild(arg);
     } else {
       funcType = "combined_probability[" + colType + "]";
-      Element arg = document.createElement("argument");
+      Element arg = createElement(Tag.Argument);
       arg.setAttribute("key", "path");
       arg.setAttribute("type", "String");
       arg.setAttribute("value", getDistributionPath(columnId));
@@ -193,9 +205,9 @@ public class MyriadWriter implements Writer {
   
   private Element createEnumSet(ColumnId columnId, Column<?> colStat) {
     if (colStat.isEnumerated()) {
-      Element enumSet = document.createElement("enum_set");
+      Element enumSet = createElement(Tag.EnumSet);
       enumSet.setAttribute("key", columnId.getQualifiedName().toLowerCase());
-      Element arg = document.createElement("argument");
+      Element arg = createElement(Tag.Argument);
       arg.setAttribute("key", "path");
       arg.setAttribute("type", "String");
       arg.setAttribute("value", getDomainPath(columnId));
@@ -207,28 +219,41 @@ public class MyriadWriter implements Writer {
   }
   
   private Element createRandomSequence(String table) {
-    Element randomSequence = document.createElement("random_sequence");
+    // create random sequence (skeleton) from given table name
+    Element randomSequence = createElement(Tag.RandomSequence);
     randomSequence.setAttribute("key", table.toLowerCase());
-    Element recordType = document.createElement("record_type");
+    // create and append record_type
+    Element recordType = createElement(Tag.RecordType);
     randomSequence.appendChild(recordType);
-    Element setterChain = document.createElement("setter_chain");
+    // create and append output_format
+    Element outputFormat = createElement(Tag.OutputFormat);
+    outputFormat.setAttribute("type", "csv");
+    Element argQuot = createKeyTypeValueArgument("quoted", "Bool", "false");
+    Element argDelim = createKeyTypeValueArgument("delimiter", "Char", "|");
+    outputFormat.appendChild(argQuot);
+    outputFormat.appendChild(argDelim);
+    randomSequence.appendChild(outputFormat);
+    // create and append setter_chain
+    Element setterChain = createElement(Tag.SetterChain);
     randomSequence.appendChild(setterChain);
-    Element cardinalityEstimator = document.createElement("cardinality_estimator");
+    // create and append cardinality_estimator
+    Element cardinalityEstimator = createElement(Tag.CardinalityEstimator);
     cardinalityEstimator.setAttribute("type", "linear_scale_estimator");
-    Element cardArg = document.createElement("argument");
+    Element cardArg = createElement(Tag.Argument);
     cardArg.setAttribute("key", "base_cardinality");
     cardArg.setAttribute("type", "I64u");
     cardArg.setAttribute("value", getBaseCardinalityParam(table, true));
     cardinalityEstimator.appendChild(cardArg);
     randomSequence.appendChild(cardinalityEstimator);
-    Element sequenceIterator = document.createElement("sequence_iterator");
+    // create and append sequence_iterator
+    Element sequenceIterator = createElement(Tag.SequenceIterator);
     sequenceIterator.setAttribute("type", "partitioned_iterator");
     randomSequence.appendChild(sequenceIterator);
     return randomSequence;
   }
   
   private Element createRecordType(ColumnId columnId, Column<?> colStat) {
-    Element field = document.createElement("field");
+    Element field = createElement(Tag.Field);
     field.setAttribute("name", "col_" + columnId.getColumn().toLowerCase());
     if (colStat.isEnumerated()) {
       field.setAttribute("type", "Enum");
@@ -240,52 +265,63 @@ public class MyriadWriter implements Writer {
   }
 
   private Element createReference(ColumnId columnId) {
-    Element reference = document.createElement("reference");
-    reference.setAttribute("name", columnId.getColumn().toLowerCase() + "_ref");
+    Element reference = createElement(Tag.Reference);
+    reference.setAttribute("name", "col_" + columnId.getColumn().toLowerCase() + "_ref");
     reference.setAttribute("type", getReferenceType(columnId));
     return reference;
   }
 
-  private Element createReferenceSetter(ColumnId columnId) {
-    Element setter = document.createElement("setter");
+  private Element createReferenceSetter(ColumnId columnId, Column<?> colStat) {
+    String type = colStat.getType();
+    Element setter = createElement(Tag.Setter);
     setter.setAttribute("key", getSetterKey(columnId) + "_ref");
     setter.setAttribute("type", "reference_setter");
     Element fieldArg =
         createKeyTypeRefArgument("reference", "reference_ref", getReferenceRef(columnId).toLowerCase());
     setter.appendChild(fieldArg);
-    Element randomReferenceProvider = createRandomReferenceProvider(columnId);
+    Element randomReferenceProvider = createRandomReferenceProvider(columnId, type);
     setter.appendChild(randomReferenceProvider);
     return setter;
   }
   
   private Element createSetter(ColumnId columnId, Column<?> colStat) {
-    Element setter = document.createElement("setter");
+    String type = colStat.getType();
+    Element setter = createElement(Tag.Setter);
     setter.setAttribute("key", getSetterKey(columnId));
     setter.setAttribute("type", "field_setter");
     Element fieldArg = createKeyTypeRefArgument("field", "field_ref", getFieldRef(columnId));
     setter.appendChild(fieldArg);
     // create reference provider for references, i.e. foreign keys
     if (schema.isReference(columnId)) {
-      Element contextValueProvider = createContextValueProvider(columnId);
+      Element contextValueProvider = createContextValueProvider(columnId, type);
       setter.appendChild(contextValueProvider);
     }
     // create clustered value provider for all key columns
     else if (colStat.getConstraints().contains(Constraint.PRIMARY_KEY)) {
-      Element clusteredValueProvider = createClusteredValueProvider(columnId);
+      Element clusteredValueProvider = createClusteredValueProvider(columnId, type);
       setter.appendChild(clusteredValueProvider);
     }
     // create random value provider for all non key columns
     else {
-      Element randomValueProvider = createRandomValueProvider(columnId);
+      Element randomValueProvider = createRandomValueProvider(columnId, type);
       setter.appendChild(randomValueProvider);
     }    
     return setter;
   }
 
   private Element createKeyTypeArgument(final String key, final String type) {
-    Element argument = document.createElement("argument");
+    Element argument = createElement(Tag.Argument);
     argument.setAttribute("key", key);
     argument.setAttribute("type", type);
+    return argument;
+  }
+
+  private Element createKeyTypeValueArgument(
+      final String key,
+      final String type,
+      final String value) {
+    Element argument = createKeyTypeArgument(key, type);
+    argument.setAttribute("value", value);
     return argument;
   }
 
@@ -296,14 +332,15 @@ public class MyriadWriter implements Writer {
     return setterArg;
   }
 
-  private Element createClusteredValueProvider(final ColumnId columnId) {
-    Element clusteredValueProvider = document.createElement("argument");
+  private Element createClusteredValueProvider(final ColumnId columnId, final String type) {
+    String myriadType = getMyriadType(type);
+    Element clusteredValueProvider = createElement(Tag.Argument);
     clusteredValueProvider.setAttribute("key", "value");
-    clusteredValueProvider.setAttribute("type", "clustered_value_provider");
+    clusteredValueProvider.setAttribute("type", "clustered_value_provider[" + myriadType + "]");
     Element probability = 
         createKeyTypeRefArgument("probability", "function_ref", getFunctionKey(columnId));
     clusteredValueProvider.appendChild(probability);
-    Element cardinality = createKeyTypeArgument("cardinality", "const_range_provider");
+    Element cardinality = createKeyTypeArgument("cardinality", "const_range_provider[" + myriadType + "]");
     Element min = createKeyTypeArgument("min", "I64u");
     min.setAttribute("value", String.valueOf(0));
     cardinality.appendChild(min);
@@ -314,17 +351,19 @@ public class MyriadWriter implements Writer {
     return clusteredValueProvider;
   }
 
-  private Element createRandomValueProvider(final ColumnId columnId) {
-    Element randomValueProvider = createKeyTypeArgument("value", "random_value_provider");
+  private Element createRandomValueProvider(final ColumnId columnId, final String type) {
+    String myriadType = getMyriadType(type);
+    Element randomValueProvider = createKeyTypeArgument("value", "random_value_provider[" + myriadType + "]");
     Element probability = 
         createKeyTypeRefArgument("probability", "function_ref", getFunctionKey(columnId));
     randomValueProvider.appendChild(probability);
     return randomValueProvider;
   }
 
-  private Element createContextValueProvider(final ColumnId columnId) {
+  private Element createContextValueProvider(final ColumnId columnId, final String type) {
+    String myriadType = getMyriadType(type);
     Element contextValueProvider =
-        createKeyTypeArgument("value", "context_field_value_provider");
+        createKeyTypeArgument("value", "context_field_value_provider[" + myriadType + "]");
     String ref =
         getReferenceRef(columnId) + ":" + schema.getReferencedColumn(columnId).getColumn().toLowerCase();
     Element fieldArg = createKeyTypeRefArgument("field", "field_ref", ref);
@@ -332,14 +371,14 @@ public class MyriadWriter implements Writer {
     return contextValueProvider;
   }
 
-  private Element createRandomReferenceProvider(final ColumnId columnId) {
+  private Element createRandomReferenceProvider(final ColumnId columnId, final String type) {
     Element randomReferenceProvider = 
         createKeyTypeArgument("value", "random_reference_provider");
     Element predicate = createKeyTypeArgument("predicate", "equality_predicate_provider");
     Element binder = createKeyTypeArgument("binder", "predicate_value_binder");
     ColumnId reffedCol = schema.getReferencedColumn(columnId);
     Element field = createKeyTypeRefArgument("field", "field_ref", getFieldRef(reffedCol));
-    Element valueProvider = createRandomValueProvider(reffedCol);
+    Element valueProvider = createRandomValueProvider(reffedCol, type);
     binder.appendChild(field);
     binder.appendChild(valueProvider);
     predicate.appendChild(binder);
@@ -413,5 +452,41 @@ public class MyriadWriter implements Writer {
 
   private String getReferenceType(ColumnId columnId) {
     return schema.getReferencedColumn(columnId).getTable().toLowerCase();
+  }
+
+  public enum Tag {
+    GeneratorPrototype("generator_prototype"),
+    Parameters("parameters"),
+      Parameter("parameter"),
+    Functions("functions"),
+      Function("function"),
+    EnumSets("enum_sets"),
+      EnumSet("enum_set"),
+    Argument("argument"),
+    RecordSequences("record_sequences"),
+      RandomSequence("random_sequence"),
+        RecordType("record_type"),
+          Field("field"),
+          Reference("reference"),
+        OutputFormat("output_format"),
+        SetterChain("setter_chain"),
+          Setter("setter"),
+        CardinalityEstimator("cardinality_estimator"),
+        SequenceIterator("sequence_iterator");
+
+    private final String name;
+    
+    private Tag(final String name) {
+      this.name = name;
+    }
+
+    public String getName() {
+      return name;
+    }
+
+    @Override
+    public String toString() {
+      return name;
+    }
   }
 }
