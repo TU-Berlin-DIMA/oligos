@@ -365,7 +365,7 @@ public class MyriadWriter implements Writer {
     Element contextValueProvider =
         createKeyTypeArgument("value", "context_field_value_provider[" + myriadType + "]");
     String ref =
-        getReferenceRef(columnId) + ":" + schema.getReferencedColumn(columnId).getColumn().toLowerCase();
+        getReferenceRef(columnId) + ":col_" + schema.getReferencedColumn(columnId).getColumn().toLowerCase();
     Element fieldArg = createKeyTypeRefArgument("field", "field_ref", ref);
     contextValueProvider.appendChild(fieldArg);
     return contextValueProvider;
