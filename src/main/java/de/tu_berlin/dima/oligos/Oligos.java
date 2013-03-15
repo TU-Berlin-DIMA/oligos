@@ -47,12 +47,16 @@ import de.tu_berlin.dima.oligos.type.util.operator.date.TimestampOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.BigDecimalOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.BigIntegerOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.ByteOperator;
+import de.tu_berlin.dima.oligos.type.util.operator.numerical.DoubleOperator;
+import de.tu_berlin.dima.oligos.type.util.operator.numerical.FloatOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.IntegerOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.LongOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.ShortOperator;
 import de.tu_berlin.dima.oligos.type.util.parser.CharParser;
 import de.tu_berlin.dima.oligos.type.util.parser.DateParser;
 import de.tu_berlin.dima.oligos.type.util.parser.BigDecimalParser;
+import de.tu_berlin.dima.oligos.type.util.parser.DoubleParser;
+import de.tu_berlin.dima.oligos.type.util.parser.FloatParser;
 import de.tu_berlin.dima.oligos.type.util.parser.IntegerParser;
 import de.tu_berlin.dima.oligos.type.util.parser.LongParser;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
@@ -64,23 +68,6 @@ import de.tu_berlin.dima.oligos.type.util.parser.TimestampParser;
 public class Oligos {
 
   private static final Logger LOGGER = Logger.getLogger(Oligos.class);
-
-  public static void setUpOperators() {
-    OperatorManager.putOperator(Byte.class, new ByteOperator());
-    OperatorManager.putOperator(Short.class, new ShortOperator());
-    OperatorManager.putOperator(Integer.class, new IntegerOperator());
-    OperatorManager.putOperator(Long.class, new LongOperator());
-    OperatorManager.putOperator(Timestamp.class, new TimestampOperator());
-    OperatorManager.putOperator(Time.class, new TimeOperator());
-    OperatorManager.putOperator(Date.class, new DateOperator());
-    OperatorManager.putOperator(BigInteger.class, new BigIntegerOperator());
-    OperatorManager.putOperator(BigDecimal.class, new BigDecimalOperator());
-    OperatorManager.putOperator(Character.class, new CharOperator());
-  }
-
-  /*public static ColumnProfiler<?> getProfiler() {
-    
-  }*/
 
   public static ColumnProfiler<?> getProfiler(final ColumnId columnId, final TypeInfo type
       , final JdbcConnector jdbcConnector, final MetaConnector metaConnector)
@@ -126,6 +113,20 @@ public class Oligos {
           jdbcConnector, schema, table, column, p); 
       profiler = new ColumnProfiler<BigDecimal>(
           schema, table, column, typeName, isEnum, connector, op, p);
+    } else if (typeName.equals("float")) {
+      Parser<Float> p = new FloatParser();
+      Operator<Float> op = new FloatOperator();
+      ColumnConnector<Float> connector = new Db2ColumnConnector<Float>(
+          jdbcConnector, schema, table, column, p);
+      profiler = new ColumnProfiler<Float>(
+          schema, table, column, typeName, isEnum, connector, op, p);
+    } else if (typeName.equals("double")) {
+      Parser<Double> p = new DoubleParser();
+      Operator<Double> op = new DoubleOperator();
+      ColumnConnector<Double> connector = new Db2ColumnConnector<Double>(
+          jdbcConnector, schema, table, column, p);
+      profiler = new ColumnProfiler<Double>(
+          schema, table, column, typeName, isEnum, connector, op, p);
     } else if (typeName.equals("timestamp")) {
       Parser<Timestamp> p = new TimestampParser();
       Operator<Timestamp> op = new TimestampOperator();
@@ -170,8 +171,6 @@ public class Oligos {
   public static void main(String[] args) throws TypeNotSupportedException {
     BasicConfigurator.configure();
     LOGGER.setLevel(Level.ALL);
-
-    setUpOperators();
 
     CommandLineInterface cli = new CommandLineInterface(args);
     try {
