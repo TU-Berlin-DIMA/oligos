@@ -1,15 +1,10 @@
 package de.tu_berlin.dima.oligos.type.util.parser;
 
-public class CharParser implements Parser<Character> {
+public class CharParser extends AbstractParser<Character> {
 
   @Override
   public Character fromString(String value) {
-    return value.charAt(0);
-  }
-
-  @Override
-  public String toString(Object value) {
-    return value.toString();
+    return removeQuotes(value).charAt(0);
   }
 
 }

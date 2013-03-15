@@ -1,15 +1,10 @@
 package de.tu_berlin.dima.oligos.type.util.parser;
 
-public class ByteParser implements Parser<Byte> {
+public class ByteParser extends AbstractParser<Byte> {
 
   @Override
   public Byte fromString(String value) {
-    return Byte.valueOf(value);
-  }
-
-  @Override
-  public String toString(Object value) {
-    return value.toString();
+    return Byte.valueOf(removeQuotes(value));
   }
 
 }
