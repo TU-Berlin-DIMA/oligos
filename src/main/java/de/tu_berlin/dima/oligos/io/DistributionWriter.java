@@ -2,6 +2,9 @@ package de.tu_berlin.dima.oligos.io;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
+
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 
@@ -11,6 +14,11 @@ import de.tu_berlin.dima.oligos.stat.distribution.histogram.Histogram;
 import de.tu_berlin.dima.oligos.type.util.operator.Operators;
 
 public class DistributionWriter implements Writer {
+
+  @SuppressWarnings("serial")
+  private final static Set<String> QUOTED_TYPE = new HashSet<String>() {{
+    add("char");
+  }};
 
   private final File distributionFile;
   private final File domainFile;
@@ -44,10 +52,11 @@ public class DistributionWriter implements Writer {
     boolean isEnum = column.isEnumerated();
     Histogram<?> distribution = column.getDistribution();
     Histogram<?> exactValues = distribution.getExactValues();
-    long numTotal = column.getNumberOfValues();
+    long numTotal = column.getNumberOfRecords();
     int numExactVals = exactValues.getNumberOfBuckets();
     int numBuckets = distribution.getNumberOfBuckets() - numExactVals;
-    double nullProbability = column.getNumNulls() / (double) numTotal;
+    //double nullProbability = column.getNumNulls() / (double) numTotal;
+    double nullProbability = column.getNullProbability();
     strBld.append(getDistributionFileHeader(numExactVals, numBuckets, nullProbability));
     strBld.append('\n');
     strBld.append("# exact values");
@@ -59,6 +68,9 @@ public class DistributionWriter implements Writer {
       if (isEnum) {
         strBld.append(getExactEntry(probability, value, index++));
       } else {
+        if (QUOTED_TYPE.contains(column.getType())) {
+          value = "\'" + value + "\'";
+        }
         strBld.append(getExactEntry(probability, value));
       }
       strBld.append('\n');

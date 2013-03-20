@@ -10,10 +10,20 @@ import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 public class Column<T> {
 
   @SuppressWarnings("serial")
-  public static final Set<String> SUPPORTED_TYPES = new HashSet<String>() {{
+  public static final Set<String> INCREMENTAL_TYPES = new HashSet<String>() {{
+    add("smallint");
     add("integer");
+    add("bigint");
+    add("time");
+    add("timestamp");
     add("date");
     add("decimal");
+    add("float");
+    add("double");
+  }};
+  @SuppressWarnings("serial")
+  public static final Set<String> ENUM_TYPES = new HashSet<String>() {{
+    add("");
   }};
 
   private final String schema;
@@ -89,7 +99,7 @@ public class Column<T> {
   }
   
   public boolean isEnumerated() {
-    if (SUPPORTED_TYPES.contains(getType())) {
+    if (INCREMENTAL_TYPES.contains(getType())) {
       return false;
     } else {
       return true;
@@ -107,6 +117,10 @@ public class Column<T> {
   public boolean hasDistribution() {
     return !distribution.isEmpty();
   }
+
+  public long getNumberOfRecords() {
+    return distribution.getTotalNumberOfValues() + numNulls;
+  }
   
   public long getNumberOfValues() {
     return distribution.getTotalNumberOfValues();
@@ -114,6 +128,14 @@ public class Column<T> {
   
   public Histogram<T> getDistribution() {
     return distribution;
+  }
+
+  public double getNullProbability() {
+    if (numNulls == 0) {
+      return 0.0;
+    } else {
+      return (double) numNulls / getNumberOfRecords(); 
+    }
   }
 
   public String asString(Object value) {
