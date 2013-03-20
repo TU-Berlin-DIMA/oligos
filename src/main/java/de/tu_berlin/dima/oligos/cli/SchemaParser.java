@@ -1,5 +1,6 @@
 package de.tu_berlin.dima.oligos.cli;
 
+import org.apache.commons.cli.ParseException;
 import org.parboiled.BaseParser;
 import org.parboiled.Parboiled;
 import org.parboiled.Rule;
@@ -121,7 +122,7 @@ public class SchemaParser extends BaseParser<SparseSchema> {
         builder.set(builder.get().addColumn(schema.get(), table.get(), match())));
   }
 
-  public static SparseSchema parse(final String schemaDefinition) {
+  public static SparseSchema parse(final String schemaDefinition) throws ParseException {
     String expression = schemaDefinition.replaceAll("\\s", "");
     SchemaParser parser = Parboiled.createParser(SchemaParser.class);
     ReportingParseRunner<SparseSchema> runner = new ReportingParseRunner<SparseSchema>(parser.SchemaSequence());
@@ -130,8 +131,7 @@ public class SchemaParser extends BaseParser<SparseSchema> {
       return result.resultValue;
     }
     else {
-      // TODO throw parseException with hints what went wrong
-      return (new SparseSchemaBuilder()).build();
+      throw new ParseException("Invalid schema: " + schemaDefinition);
     }
   }
 }
