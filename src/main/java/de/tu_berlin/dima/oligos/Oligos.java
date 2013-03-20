@@ -3,7 +3,6 @@ package de.tu_berlin.dima.oligos;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Time;
@@ -40,13 +39,10 @@ import de.tu_berlin.dima.oligos.type.util.ColumnId;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.operator.CharOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
-import de.tu_berlin.dima.oligos.type.util.operator.OperatorManager;
 import de.tu_berlin.dima.oligos.type.util.operator.date.DateOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.TimeOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.TimestampOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.BigDecimalOperator;
-import de.tu_berlin.dima.oligos.type.util.operator.numerical.BigIntegerOperator;
-import de.tu_berlin.dima.oligos.type.util.operator.numerical.ByteOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.DoubleOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.FloatOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.IntegerOperator;
@@ -148,7 +144,7 @@ public class Oligos {
           jdbcConnector, schema, table, column, p); 
       profiler = new ColumnProfiler<Date>(
           schema, table, column, typeName, isEnum, connector, op, p);
-    } else if (typeName.equals("character")
+    } else if (typeName.equals("char")
         && (type.getLength() == 1)) {
       Parser<Character> p = new CharParser();
       Operator<Character> op = new CharOperator();
