@@ -134,18 +134,4 @@ public class SchemaParser extends BaseParser<SparseSchema> {
       return (new SparseSchemaBuilder()).build();
     }
   }
-
-  public static void main(String[] args) {
-    String expression = "DB2INST1 (ORDERS, CUSTOMER (CUSTKEY, ORDERKEY)), DB2INST2";
-    SparseSchema schemas = SchemaParser.parse(expression);
-    for (String schema : schemas.schemas()) {
-      System.out.println(schema);
-      for (String table : schemas.tablesIn(schema)) {
-        System.out.println(schema + "." + table);
-        for (String column : schemas.columnsIn(schema, table)) {
-          System.out.println(schema + "." + table + "." + column);
-        }
-      }
-    }
-  }
 }
