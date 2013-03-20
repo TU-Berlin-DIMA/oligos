@@ -95,7 +95,7 @@ public class CommandLineInterface {
   }
 
   public void printHelpMessage() {
-    helpFormatter.printHelp(Oligos.class.getSimpleName(), OPTS);
+    helpFormatter.printHelp(Oligos.class.getSimpleName() + " <options> <schema>", OPTS);
   }
 
   private static boolean checkOptions(CommandLine cmd, HelpFormatter formatter) {
