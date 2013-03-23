@@ -1,35 +1,37 @@
 package de.tu_berlin.dima.oligos.stat;
 
+import java.math.BigDecimal;
+import java.sql.Date;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.util.HashSet;
 import java.util.Set;
 
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.Histogram;
+import de.tu_berlin.dima.oligos.type.util.ColumnId;
 import de.tu_berlin.dima.oligos.type.util.Constraint;
+import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 
 public class Column<T> {
 
   @SuppressWarnings("serial")
-  public static final Set<String> INCREMENTAL_TYPES = new HashSet<String>() {{
-    add("smallint");
-    add("integer");
-    add("bigint");
-    add("time");
-    add("timestamp");
-    add("date");
-    add("decimal");
-    add("float");
-    add("double");
-  }};
-  @SuppressWarnings("serial")
-  public static final Set<String> ENUM_TYPES = new HashSet<String>() {{
-    add("");
+  public static final Set<Class<?>> INCREMENTAL_TYPES = new HashSet<Class<?>>() {{
+    add(Short.class);
+    add(Integer.class);
+    add(Long.class);
+    add(Time.class);
+    add(Timestamp.class);
+    add(Date.class);
+    add(BigDecimal.class);
+    add(Float.class);
+    add(Double.class);
   }};
 
   private final String schema;
   private final String table;
   private final String column;
-  private final String type;
+  private final TypeInfo type;
   private final Set<Constraint> constraints;
   private final T min;
   private final T max;
@@ -37,11 +39,9 @@ public class Column<T> {
   private final long numNulls;
   private final Histogram<T> distribution;
   private final Parser<T> parser;
-  //private final Map<T, Long> mostFrequent;
-  
 
   public Column(final String schema, final String table, final String column
-      , final String type, final Set<Constraint> constraints
+      , final TypeInfo type, final Set<Constraint> constraints
       , final T min, final T max
       , final long cardinality, final long numNulls
       , final Histogram<T> distribution, final Parser<T> parser) {
@@ -56,6 +56,10 @@ public class Column<T> {
     this.numNulls = numNulls;
     this.distribution = distribution;
     this.parser = parser;
+  }
+
+  public ColumnId getId() {
+    return new ColumnId(schema, table, column);
   }
   
   public String getSchema() {
@@ -73,9 +77,13 @@ public class Column<T> {
   public String getQualifiedName() {
     return schema + "." + table + "." + column;
   }
-  
-  public String getType() {
+
+  public TypeInfo getTypeInfo() {
     return type;
+  }
+
+  public String getTypeName() {
+    return type.getTypeName();
   }
 
   public Set<Constraint> getConstraints() {
@@ -99,7 +107,7 @@ public class Column<T> {
   }
   
   public boolean isEnumerated() {
-    if (INCREMENTAL_TYPES.contains(getType())) {
+    if (INCREMENTAL_TYPES.contains(type.getType())) {
       return false;
     } else {
       return true;

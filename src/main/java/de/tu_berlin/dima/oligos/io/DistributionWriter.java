@@ -16,8 +16,9 @@ import de.tu_berlin.dima.oligos.type.util.operator.Operators;
 public class DistributionWriter implements Writer {
 
   @SuppressWarnings("serial")
-  private final static Set<String> QUOTED_TYPE = new HashSet<String>() {{
-    add("char");
+  private final static Set<Class<?>> QUOTED_TYPE = new HashSet<Class<?>>() {{
+    add(Character.class);
+    add(String.class);
   }};
 
   private final File distributionFile;
@@ -40,8 +41,8 @@ public class DistributionWriter implements Writer {
     int index = 0;
     for (Bucket<?> exactBucket : exactValues) {
       strBld.append(index++);
-      strBld.append('\t');
-      strBld.append(column.asString(exactBucket.getLowerBound()));
+      strBld.append(" ... ");
+      strBld.append("\"" + column.asString(exactBucket.getLowerBound()) + "\"");
       strBld.append('\n');
     }
     return strBld.toString();
@@ -55,7 +56,6 @@ public class DistributionWriter implements Writer {
     long numTotal = column.getNumberOfRecords();
     int numExactVals = exactValues.getNumberOfBuckets();
     int numBuckets = distribution.getNumberOfBuckets() - numExactVals;
-    //double nullProbability = column.getNumNulls() / (double) numTotal;
     double nullProbability = column.getNullProbability();
     strBld.append(getDistributionFileHeader(numExactVals, numBuckets, nullProbability));
     strBld.append('\n');
@@ -68,7 +68,7 @@ public class DistributionWriter implements Writer {
       if (isEnum) {
         strBld.append(getExactEntry(probability, value, index++));
       } else {
-        if (QUOTED_TYPE.contains(column.getType())) {
+        if (QUOTED_TYPE.contains(column.getTypeInfo().getType())) {
           value = "\'" + value + "\'";
         }
         strBld.append(getExactEntry(probability, value));

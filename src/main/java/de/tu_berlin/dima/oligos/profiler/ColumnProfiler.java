@@ -11,6 +11,7 @@ import de.tu_berlin.dima.oligos.stat.distribution.histogram.CustomHistogram;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.Histogram;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.QuantileHistogram;
 import de.tu_berlin.dima.oligos.type.util.Constraint;
+import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 
@@ -20,13 +21,13 @@ public class ColumnProfiler<T> implements Profiler<Column<T>> {
   protected final String schema;
   protected final String table;
   protected final String column;
-  protected final String type;
+  protected final TypeInfo type;
   protected final boolean isEnum;
   protected final Operator<T> operator;
   protected final Parser<T> parser;
 
   public ColumnProfiler(final String schema, final String table, final String column
-      , final String type, final boolean isEnum, final ColumnConnector<T> connector
+      , final TypeInfo type, final boolean isEnum, final ColumnConnector<T> connector
       , final Operator<T> operator, final Parser<T> parser) {
     this.schema = schema;
     this.table = table;

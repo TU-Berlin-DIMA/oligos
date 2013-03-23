@@ -1,14 +1,20 @@
 package de.tu_berlin.dima.oligos.type;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.util.Map;
+
+import com.google.common.collect.Maps;
 
 public class Types {
 
-  private Types(){};
+  private final static Map<Class<?>, MyriadType> MYRIAD_TYPES = Maps.newHashMap();
 
+  private Types(){};
+  
   public static Class<?> convert(int typeNumber) {
     Class<?> result = Object.class;
 
@@ -44,11 +50,10 @@ public class Types {
         result = Long.class;
         break;
 
-      /*case java.sql.Types.REAL:
-        result = Real
-        break;*/
-
       case java.sql.Types.FLOAT:
+      case java.sql.Types.REAL:
+        result = Float.class;
+
       case java.sql.Types.DOUBLE:
         result = Double.class;
         break;
@@ -81,6 +86,42 @@ public class Types {
     } else {
       return convert(typeNumber);
     }
+  }
+
+  public static MyriadType getMyriadType(Class<?> clazz) {
+    MyriadType myriadType = MYRIAD_TYPES.get(clazz);
+    if (myriadType != null) {
+      return myriadType;
+    } else {
+      throw new RuntimeException("Type " + clazz.getSimpleName() + "is not supported");
+    }
+  }
+
+  /**
+   * Initialize type mappings
+   */
+  static{
+    initMyriadTypeMapping(MYRIAD_TYPES);
+  }
+
+  private static void initMyriadTypeMapping(Map<Class<?>, MyriadType> typeMappings) {
+    // integral types
+    //typeMappings.put(Byte.class, "");
+    typeMappings.put(Short.class, MyriadType.I16);
+    typeMappings.put(Integer.class, MyriadType.I32);
+    typeMappings.put(Long.class, MyriadType.I64);
+    typeMappings.put(BigInteger.class, MyriadType.I64);
+    // real types
+    typeMappings.put(Float.class, MyriadType.Decimal);
+    typeMappings.put(Double.class, MyriadType.Decimal);
+    typeMappings.put(BigDecimal.class, MyriadType.Decimal);
+    // textual types
+    typeMappings.put(Character.class, MyriadType.Char);
+    typeMappings.put(String.class, MyriadType.String);
+    // time types
+    typeMappings.put(Timestamp.class, MyriadType.Date);
+    typeMappings.put(Time.class, MyriadType.Date);
+    typeMappings.put(Date.class, MyriadType.Date);
   }
 
 }

@@ -87,63 +87,63 @@ public class Oligos {
       ColumnConnector<Short> connector = new Db2ColumnConnector<Short>(
           jdbcConnector, schema, table, column, p);      
       profiler = new ColumnProfiler<Short>(
-          schema, table, column, typeName, isEnum, connector, op, p);
+          schema, table, column, type, isEnum, connector, op, p);
     } else if (typeName.equals("integer")) {
       Parser<Integer> p = new IntegerParser();
       Operator<Integer> op = new IntegerOperator();
       ColumnConnector<Integer> connector = new Db2ColumnConnector<Integer>(
           jdbcConnector, schema, table, column, p);      
       profiler = new ColumnProfiler<Integer>(
-          schema, table, column, typeName, isEnum, connector, op, p);
+          schema, table, column, type, isEnum, connector, op, p);
     } else if (typeName.equals("bigint")) {
       Parser<Long> p = new LongParser();
       Operator<Long> op = new LongOperator();
       ColumnConnector<Long> connector = new Db2ColumnConnector<Long>(
           jdbcConnector, schema, table, column, p);      
       profiler = new ColumnProfiler<Long>(
-          schema, table, column, typeName, isEnum, connector, op, p);
+          schema, table, column, type, isEnum, connector, op, p);
     } else if (typeName.equals("decimal")) {
       Parser<BigDecimal> p = new BigDecimalParser();
       Operator<BigDecimal> op = new BigDecimalOperator();
       ColumnConnector<BigDecimal> connector = new Db2ColumnConnector<BigDecimal>(
           jdbcConnector, schema, table, column, p); 
       profiler = new ColumnProfiler<BigDecimal>(
-          schema, table, column, typeName, isEnum, connector, op, p);
+          schema, table, column, type, isEnum, connector, op, p);
     } else if (typeName.equals("float")) {
       Parser<Float> p = new FloatParser();
       Operator<Float> op = new FloatOperator();
       ColumnConnector<Float> connector = new Db2ColumnConnector<Float>(
           jdbcConnector, schema, table, column, p);
       profiler = new ColumnProfiler<Float>(
-          schema, table, column, typeName, isEnum, connector, op, p);
+          schema, table, column, type, isEnum, connector, op, p);
     } else if (typeName.equals("double")) {
       Parser<Double> p = new DoubleParser();
       Operator<Double> op = new DoubleOperator();
       ColumnConnector<Double> connector = new Db2ColumnConnector<Double>(
           jdbcConnector, schema, table, column, p);
       profiler = new ColumnProfiler<Double>(
-          schema, table, column, typeName, isEnum, connector, op, p);
+          schema, table, column, type, isEnum, connector, op, p);
     } else if (typeName.equals("timestamp")) {
       Parser<Timestamp> p = new TimestampParser();
       Operator<Timestamp> op = new TimestampOperator();
       ColumnConnector<Timestamp> connector = new Db2ColumnConnector<Timestamp>(
           jdbcConnector, schema, table, column, p);
       profiler = new ColumnProfiler<Timestamp>(
-          schema, table, column, typeName, isEnum, connector, op, p);
+          schema, table, column, type, isEnum, connector, op, p);
     } else if (typeName.equals("time")) {
       Parser<Time> p = new TimeParser();
       Operator<Time> op = new TimeOperator();
       ColumnConnector<Time> connector = new Db2ColumnConnector<Time>(
           jdbcConnector, schema, table, column, p);
       profiler = new ColumnProfiler<Time>(
-          schema, table, column, typeName, isEnum, connector, op, p);
+          schema, table, column, type, isEnum, connector, op, p);
     } else if (typeName.equals("date")) {
       Parser<Date> p = new DateParser();
       Operator<Date> op = new DateOperator();
       ColumnConnector<Date> connector = new Db2ColumnConnector<Date>(
           jdbcConnector, schema, table, column, p); 
       profiler = new ColumnProfiler<Date>(
-          schema, table, column, typeName, isEnum, connector, op, p);
+          schema, table, column, type, isEnum, connector, op, p);
     } else if (typeName.equals("char")
         && (type.getLength() == 1)) {
       Parser<Character> p = new CharParser();
@@ -151,7 +151,7 @@ public class Oligos {
       ColumnConnector<Character> connector = new Db2ColumnConnector<Character>(
           jdbcConnector, schema, table, column, p); 
       profiler = new ColumnProfiler<Character>(
-          schema, table, column, typeName, isEnum, connector, op, p);
+          schema, table, column, type, isEnum, connector, op, p);
     } else {
       LOGGER.warn(schema + "." + table + "." + column
           + " is not supported using pseudo profiler instead!");
@@ -159,7 +159,7 @@ public class Oligos {
       ColumnConnector<String> connector = new Db2ColumnConnector<String>(
           jdbcConnector, schema, table, column, p);
       profiler = new PseudoColumnProfiler(
-          schema, table, column, typeName, isEnum, connector);
+          schema, table, column, type, isEnum, connector);
     }
     return profiler;
   }

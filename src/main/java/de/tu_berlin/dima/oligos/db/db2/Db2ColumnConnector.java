@@ -85,12 +85,12 @@ public class Db2ColumnConnector<T> implements ColumnConnector<T> {
 
   public T getMin() throws SQLException {
     String minStr = connector.scalarQuery(DOMAIN_QUERY, "low2key", schema, table, column);
-    return parser.fromString(minStr.replaceAll("'", ""));
+    return parser.fromString(minStr);
   }
 
   public T getMax() throws SQLException {
     String minStr = connector.scalarQuery(DOMAIN_QUERY, "high2key", schema, table, column);
-    return parser.fromString(minStr.replaceAll("'", ""));
+    return parser.fromString(minStr);
   }
 
   @Override

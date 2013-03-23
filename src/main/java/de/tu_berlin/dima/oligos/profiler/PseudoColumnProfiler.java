@@ -13,12 +13,13 @@ import de.tu_berlin.dima.oligos.stat.distribution.histogram.Histogram;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.QuantileHistogram;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.StringHistogram;
 import de.tu_berlin.dima.oligos.type.util.Constraint;
+import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.parser.StringParser;
 
 public class PseudoColumnProfiler extends ColumnProfiler<String>  {
 
   public PseudoColumnProfiler(String schema, String table, String column,
-      String type, boolean isEnum, ColumnConnector<String> connector) {
+      TypeInfo type, boolean isEnum, ColumnConnector<String> connector) {
     super(schema, table, column, type, isEnum, connector, null, new StringParser());
   }
 
