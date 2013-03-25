@@ -47,11 +47,15 @@ following:
 
 1.  Install the jdbc driver with
 
-	`mvn install:install-file -Dfile=db2jcc4.jar -DgroupId=com.ibm.db2 \
-		-DartifactId=jdbc -Dversion=4.0 -Dpackaging=jar`
+	```shell
+    mvn install:install-file -Dfile=db2jcc4.jar -DgroupId=com.ibm.db2 \
+	-DartifactId=jdbc -Dversion=4.0 -Dpackaging=jar
+    ```
 
 1.  Install the jdbc license with
 
-	`mvn install:install-file -Dfile=db2jcc_license_cu.jar -DgroupId=com.ibm.db2 \
-		-DartifactId=jdbc_license -Dversion=4.0 -Dpackaging=jar`
+	```shell
+    mvn install:install-file -Dfile=db2jcc_license_cu.jar -DgroupId=com.ibm.db2 \
+	-DartifactId=jdbc_license -Dversion=4.0 -Dpackaging=jar
+    ```
 
