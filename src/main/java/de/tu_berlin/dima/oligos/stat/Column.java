@@ -17,6 +17,7 @@ public class Column<T> {
 
   @SuppressWarnings("serial")
   public static final Set<Class<?>> INCREMENTAL_TYPES = new HashSet<Class<?>>() {{
+    add(Character.class);
     add(Short.class);
     add(Integer.class);
     add(Long.class);
