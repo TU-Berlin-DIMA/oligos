@@ -7,7 +7,6 @@ import java.util.Set;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
-
 import de.tu_berlin.dima.oligos.stat.Column;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.Bucket;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.Histogram;
@@ -49,6 +48,7 @@ public class DistributionWriter implements Writer {
   }
 
   public String getDistributionString() {
+    Class<?> type = column.getTypeInfo().getType();
     StringBuilder strBld = new StringBuilder();
     boolean isEnum = column.isEnumerated();
     Histogram<?> distribution = column.getDistribution();
@@ -68,7 +68,7 @@ public class DistributionWriter implements Writer {
       if (isEnum) {
         strBld.append(getExactEntry(probability, value, index++));
       } else {
-        if (QUOTED_TYPE.contains(column.getTypeInfo().getType())) {
+        if (QUOTED_TYPE.contains(type)) {
           value = "\'" + value + "\'";
         }
         strBld.append(getExactEntry(probability, value));
@@ -82,7 +82,8 @@ public class DistributionWriter implements Writer {
       String upperBound = column.asString(Operators.increment(bucket.getUpperBound()));
       double probability = bucket.getFrequency() / (double) numTotal;
       if (!isEnum) {
-        strBld.append(getBucketEntry(probability, lowerBound, upperBound));
+        boolean quoted = QUOTED_TYPE.contains(type);
+        strBld.append(getBucketEntry(probability, lowerBound, upperBound, quoted));
         strBld.append('\n');
       }
     }
@@ -146,16 +147,27 @@ public class DistributionWriter implements Writer {
     return strBld.toString();
   }
 
-  private String getBucketEntry(double probability, String lowerBound, String upperBound) {
+  private String getBucketEntry(double probability, String lowerBound,
+      String upperBound, boolean quoted) {
     StringBuilder strBld = new StringBuilder();
     strBld.append("p(X) = ");
     strBld.append(String.valueOf(probability));
     strBld.append('\t');
     strBld.append("for X = { ");
     strBld.append("x in [");
-    strBld.append(lowerBound);
-    strBld.append(", ");
-    strBld.append(upperBound);
+    if (quoted) {
+      strBld.append('\'');
+      strBld.append(lowerBound);
+      strBld.append('\'');
+      strBld.append(", ");
+      strBld.append('\'');
+      strBld.append(upperBound);
+      strBld.append('\'');
+    } else {
+      strBld.append(lowerBound);
+      strBld.append(", ");
+      strBld.append(upperBound);
+    }
     strBld.append(")");
     strBld.append(" }");
     return strBld.toString();
