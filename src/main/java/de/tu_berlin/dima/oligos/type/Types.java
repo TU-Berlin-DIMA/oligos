@@ -81,7 +81,8 @@ public class Types {
   }
 
   public static Class<?> convert(int typeNumber, int length) {
-    if (typeNumber == java.sql.Types.CHAR && length == 1) {
+    if ((typeNumber == java.sql.Types.CHAR || typeNumber == java.sql.Types.VARCHAR) 
+        && length == 1) {
       return Character.class;
     } else {
       return convert(typeNumber);

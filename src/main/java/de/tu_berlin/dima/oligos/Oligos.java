@@ -144,7 +144,7 @@ public class Oligos {
           jdbcConnector, schema, table, column, p); 
       profiler = new ColumnProfiler<Date>(
           schema, table, column, type, isEnum, connector, op, p);
-    } else if (typeName.equals("char")
+    } else if ((typeName.equals("char") || typeName.equals("varchar"))
         && (type.getLength() == 1)) {
       Parser<Character> p = new CharParser();
       Operator<Character> op = new CharOperator();
@@ -158,6 +158,8 @@ public class Oligos {
       Parser<String> p = new StringParser();
       ColumnConnector<String> connector = new Db2ColumnConnector<String>(
           jdbcConnector, schema, table, column, p);
+      // TODO throw exception when unique
+      //if (connector.getConstraints().contains(Constraint.UNIQUE)
       profiler = new PseudoColumnProfiler(
           schema, table, column, type, isEnum, connector);
     }
