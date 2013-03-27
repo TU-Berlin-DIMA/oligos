@@ -290,7 +290,14 @@ public class MyriadWriter implements Writer {
       Element contextValueProvider = createContextValueProvider(column);
       setter.appendChild(contextValueProvider);
     }
+    // TODO create CONST_VALUE_PROVIDER[<TYPE>] for all columns with low2key/ high2key = NULL
+    // <attribute key="value" type="<TYPE>" value="NULL" />
+    // if (column.getMin() == Null || column.getMax() == Null)
+
     // create clustered value provider for all key columns
+    // TODO unique columns too
+    // FIXME one single attribute constraints, NO MULTIATTRIBUTE CONSTRAINTS
+    // ARE SUPPORTED
     else if (column.getConstraints().contains(Constraint.PRIMARY_KEY)) {
       Element clusteredValueProvider = createClusteredValueProvider(column);
       setter.appendChild(clusteredValueProvider);
