@@ -29,6 +29,7 @@ import de.tu_berlin.dima.oligos.db.db2.Db2MetaConnector;
 import de.tu_berlin.dima.oligos.db.db2.Db2SchemaConnector;
 import de.tu_berlin.dima.oligos.db.db2.Db2TableConnector;
 import de.tu_berlin.dima.oligos.exception.TypeNotSupportedException;
+import de.tu_berlin.dima.oligos.exception.UnsupportedTypeException;
 import de.tu_berlin.dima.oligos.io.MyriadWriter;
 import de.tu_berlin.dima.oligos.profiler.ColumnProfiler;
 import de.tu_berlin.dima.oligos.profiler.PseudoColumnProfiler;
@@ -36,6 +37,7 @@ import de.tu_berlin.dima.oligos.profiler.SchemaProfiler;
 import de.tu_berlin.dima.oligos.profiler.TableProfiler;
 import de.tu_berlin.dima.oligos.stat.Schema;
 import de.tu_berlin.dima.oligos.type.util.ColumnId;
+import de.tu_berlin.dima.oligos.type.util.Constraint;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.operator.CharOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
@@ -67,7 +69,7 @@ public class Oligos {
 
   public static ColumnProfiler<?> getProfiler(final ColumnId columnId, final TypeInfo type
       , final JdbcConnector jdbcConnector, final MetaConnector metaConnector)
-          throws SQLException, TypeNotSupportedException {
+          throws SQLException {
     String schema = columnId.getSchema();
     String table = columnId.getTable();
     String column = columnId.getColumn();
@@ -77,7 +79,7 @@ public class Oligos {
   public static ColumnProfiler<?> getProfiler(final String schema, final  String table
       , final String column, final TypeInfo type, final JdbcConnector jdbcConnector
       , final MetaConnector metaConnector)
-      throws SQLException, TypeNotSupportedException {
+      throws SQLException {
     ColumnProfiler<?> profiler = null;
     String typeName = type.getTypeName().toLowerCase();
     boolean isEnum = metaConnector.isEnumerated(schema, table, column);
@@ -153,15 +155,18 @@ public class Oligos {
       profiler = new ColumnProfiler<Character>(
           schema, table, column, type, isEnum, connector, op, p);
     } else {
-      LOGGER.warn(schema + "." + table + "." + column
-          + " is not supported using pseudo profiler instead!");
       Parser<String> p = new StringParser();
       ColumnConnector<String> connector = new Db2ColumnConnector<String>(
           jdbcConnector, schema, table, column, p);
-      // TODO throw exception when unique
-      //if (connector.getConstraints().contains(Constraint.UNIQUE)
+      Set<Constraint> constraints = connector.getConstraints();
+      if (constraints.contains(Constraint.UNIQUE) ||
+          constraints.contains(Constraint.PRIMARY_KEY)) {
+        throw new UnsupportedTypeException(typeName, Constraint.UNIQUE);
+      }
       profiler = new PseudoColumnProfiler(
           schema, table, column, type, isEnum, connector);
+      LOGGER.warn(schema + "." + table + "." + column
+          + " is not supported using pseudo profiler instead!");
     }
     return profiler;
   }
