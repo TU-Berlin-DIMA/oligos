@@ -77,7 +77,7 @@ public class MyriadWriter implements Writer {
         ColumnId columnId = new ColumnId(schemaName, tableName, columnName);
         // create functions for current column if not reference
         // and write distribution (domain) file
-        if (!schema.isReference(columnId)) {
+        if (schema.isReferenced(columnId) || !schema.isReference(columnId)) {
           Element func = createFunction(column);
           functions.appendChild(func); 
           File distFile = new File(outputDirectory, getRelativeDistributionPath(column.getId()));

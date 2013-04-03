@@ -66,6 +66,15 @@ public class Schema implements Iterable<Table> {
     }
   }
 
+  public boolean isReferenced(final ColumnId columnId) {
+    if (references.containsVertex(columnId)) {
+      Set<Reference> neighors = references.incomingEdgesOf(columnId);
+      return !neighors.isEmpty();
+    } else {
+      return false;
+    }
+  }
+
   public ColumnId getReferencedColumn(final ColumnId columnId) {
     Set<Reference> neighbors = references.outgoingEdgesOf(columnId);
     // neighbors should only contain one neighbour
