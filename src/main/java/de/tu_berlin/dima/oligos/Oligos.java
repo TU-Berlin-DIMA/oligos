@@ -173,7 +173,7 @@ public class Oligos {
 
   public static void main(String[] args) throws TypeNotSupportedException {
     BasicConfigurator.configure();
-    LOGGER.setLevel(Level.ALL);
+    LOGGER.setLevel(Level.WARN);
 
     CommandLineInterface cli = new CommandLineInterface(args);
     try {
