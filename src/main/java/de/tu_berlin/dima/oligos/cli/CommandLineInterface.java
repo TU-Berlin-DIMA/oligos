@@ -18,10 +18,10 @@ public class CommandLineInterface {
 
   private static final Options OPTS = new Options()
       .addOption("u", "username", true, "Username for database connection")
-      .addOption("pass", "password", true, "Password for database connection")
+      .addOption("p", "password", true, "Password for database connection")
       .addOption("h", "hostname", true, "Connect to given host")
-      .addOption("d", "database", true, "Use given database")
-      .addOption("p", "port", true, "Database port")
+      .addOption("D", "database", true, "Use given database")
+      .addOption("P", "port", true, "Database port")
       .addOption("o", "output", true, "Path to the output folder")
       .addOption("g", "generator", true, "Name of the generator")
       .addOption("", "help", false, "Show help");
