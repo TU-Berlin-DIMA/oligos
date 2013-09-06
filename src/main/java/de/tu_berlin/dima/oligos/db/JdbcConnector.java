@@ -129,6 +129,7 @@ public class JdbcConnector {
 	  }
 	  return references;
   }
+  
 
   public boolean checkSchema(final String schema) throws SQLException {
     ResultSet result = metaData.getSchemas(null, schema);
