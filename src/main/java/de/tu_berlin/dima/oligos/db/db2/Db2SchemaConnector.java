@@ -42,7 +42,6 @@ public class Db2SchemaConnector implements SchemaConnector {
     this.connector = jdbcConnector;
   }
 
-  @Override
   public Set<Quartet<String, String, String, String>> getReferences(final String schema)
       throws SQLException {
     Set<Quartet<String, String, String, String>> references = connector.getReferences(schema);
