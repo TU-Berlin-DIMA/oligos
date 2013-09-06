@@ -15,13 +15,10 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.db.db2;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Set;
 
 import org.javatuples.Quartet;
-
-import com.google.common.collect.Sets;
 
 import de.tu_berlin.dima.oligos.db.JdbcConnector;
 import de.tu_berlin.dima.oligos.db.SchemaConnector;
