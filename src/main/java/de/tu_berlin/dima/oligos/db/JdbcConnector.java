@@ -24,6 +24,7 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.dbutils.DbUtils;
 import org.apache.commons.dbutils.QueryRunner;
@@ -32,6 +33,9 @@ import org.apache.commons.dbutils.handlers.MapHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
+import org.javatuples.Quartet;
 
 import de.tu_berlin.dima.oligos.type.Types;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
@@ -40,6 +44,7 @@ import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 public class JdbcConnector {
   
   public final static String IBM_JDBC_V4 = "db2";
+  public final static String ORA_JDBC_V11 = "ora";
 
   private final static String JDBC_STRING = "jdbc:%s://%s:%d/%s";
 
@@ -48,6 +53,7 @@ public class JdbcConnector {
   private final String database;
   private final String dbDriver;
 
+  
   private Connection connection;
   private DatabaseMetaData metaData;
   
@@ -105,6 +111,24 @@ public class JdbcConnector {
     DbUtils.close(result);
     return columns;
   }
+  
+  public Set<Quartet<String, String, String, String>> getReferences(final String schema) throws SQLException{
+	  Set<Quartet<String, String, String, String>> references = Sets.newHashSet();
+	  ResultSet result;
+	  List<String> tables = (List<String>) this.getTables(schema);
+	  for (String table: tables){
+		  result = this.metaData.getExportedKeys(null, schema, table);
+		  while (result.next()){
+			  Quartet<String, String, String, String> ri = new Quartet<String, String, String, String>(	
+				  	result.getString("PKTABLE_NAME"), 
+			  		result.getString("PKCOLUMN_NAME"),
+			  		result.getString("FKTABLE_NAME"), 
+			  		result.getString("FKCOLUMN_NAME"));
+			  references.add(ri);
+		  }
+	  }
+	  return references;
+  }
 
   public boolean checkSchema(final String schema) throws SQLException {
     ResultSet result = metaData.getSchemas(null, schema);
@@ -152,7 +176,17 @@ public class JdbcConnector {
     QueryRunner runner = new QueryRunner();
     return runner.query(connection, query, handler, parameters);
   }
-
+  
+  // execute SQL commands with no return values
+  @SuppressWarnings({ "rawtypes", "unchecked" })
+  public void execSQLCommand(
+	      final String query,
+	      final Object... parameters) throws SQLException {
+  ResultSetHandler handler = new ScalarHandler();
+	QueryRunner runner = new QueryRunner();
+	runner.query(connection, query, handler, parameters);
+  }
+  
   public Map<String, Object> mapQuery(
       final String query,
       final Object... parameters) throws SQLException {

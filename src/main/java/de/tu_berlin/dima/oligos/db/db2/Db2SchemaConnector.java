@@ -33,8 +33,8 @@ public class Db2SchemaConnector implements SchemaConnector {
       "     , tbname as child_table " +
       "     , pkcolnames " +
       "     , fkcolnames " +
-      "FROM   SYSIBM.SYSRELS " +
-      "WHERE  creator = ?";
+      "FROM SYSIBM.SYSRELS " +
+      "WHERE creator = ?";
 
   private final JdbcConnector connector;
 
@@ -45,18 +45,7 @@ public class Db2SchemaConnector implements SchemaConnector {
   @Override
   public Set<Quartet<String, String, String, String>> getReferences(final String schema)
       throws SQLException {
-    Set<Quartet<String, String, String, String>> references = Sets.newHashSet();
-    ResultSet result = connector.executeQuery(REFERENCES_QUERY, schema);
-    while (result.next()) {
-      String parentTable = result.getString("parent_table");
-      String parentColumn = result.getString("pkcolnames").trim().split("\\s+")[0];
-      String childTable = result.getString("child_table");
-      String childColumn = result.getString("fkcolnames").trim().split("\\s+")[0];
-      Quartet<String, String, String, String> ri =
-          new Quartet<String, String, String, String>(
-              parentTable, parentColumn, childTable, childColumn);
-      references.add(ri);
-    }
+    Set<Quartet<String, String, String, String>> references = connector.getReferences(schema);
     return references;
   }
 
