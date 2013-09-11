@@ -24,6 +24,7 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Map;
 import java.util.Set;
+
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.log4j.BasicConfigurator;
@@ -32,6 +33,7 @@ import org.apache.log4j.Logger;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+
 import de.tu_berlin.dima.oligos.cli.CommandLineInterface;
 import de.tu_berlin.dima.oligos.db.ColumnConnector;
 import de.tu_berlin.dima.oligos.db.DbUtils;
@@ -43,6 +45,10 @@ import de.tu_berlin.dima.oligos.db.db2.Db2ColumnConnector;
 import de.tu_berlin.dima.oligos.db.db2.Db2MetaConnector;
 import de.tu_berlin.dima.oligos.db.db2.Db2SchemaConnector;
 import de.tu_berlin.dima.oligos.db.db2.Db2TableConnector;
+import de.tu_berlin.dima.oligos.db.oracle.OracleColumnConnector;
+import de.tu_berlin.dima.oligos.db.oracle.OracleMetaConnector;
+import de.tu_berlin.dima.oligos.db.oracle.OracleSchemaConnector;
+import de.tu_berlin.dima.oligos.db.oracle.OracleTableConnector;
 import de.tu_berlin.dima.oligos.exception.TypeNotSupportedException;
 import de.tu_berlin.dima.oligos.exception.UnsupportedTypeException;
 import de.tu_berlin.dima.oligos.io.MyriadWriter;
@@ -72,6 +78,7 @@ import de.tu_berlin.dima.oligos.type.util.parser.DoubleParser;
 import de.tu_berlin.dima.oligos.type.util.parser.FloatParser;
 import de.tu_berlin.dima.oligos.type.util.parser.IntegerParser;
 import de.tu_berlin.dima.oligos.type.util.parser.LongParser;
+import de.tu_berlin.dima.oligos.type.util.parser.OracleDateParser;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 import de.tu_berlin.dima.oligos.type.util.parser.ShortParser;
 import de.tu_berlin.dima.oligos.type.util.parser.StringParser;
@@ -91,6 +98,7 @@ public class Oligos {
     return getProfiler(schema, table, column, type, jdbcConnector, metaConnector);
   }
   
+//TODO
   public static ColumnProfiler<?> getProfiler(final String schema, final  String table
       , final String column, final TypeInfo type, final JdbcConnector jdbcConnector
       , final MetaConnector metaConnector)
@@ -186,6 +194,46 @@ public class Oligos {
     return profiler;
   }
 
+  public static ColumnProfiler<?> getProfilerOracle(final String schema, final  String table
+	      , final String column, final TypeInfo type, final JdbcConnector jdbcConnector
+	      , final MetaConnector metaConnector) throws SQLException {
+	  ColumnProfiler<?> profiler = null;
+	  String typeName = type.getTypeName().toLowerCase();
+	  boolean isEnum = metaConnector.isEnumerated(schema, table, column);
+	  if (typeName.equals("number")) {
+		  Parser<BigDecimal> p = new BigDecimalParser();
+		  Operator<BigDecimal> op = new BigDecimalOperator();
+		  ColumnConnector<BigDecimal> connector = new OracleColumnConnector<BigDecimal>(jdbcConnector, schema, table, column, p); 
+		  profiler = new ColumnProfiler<BigDecimal>(schema, table, column, type, isEnum, connector, op, p);
+	  } 
+	  // TODO new data type including date+time
+	  else if (typeName.equals("date")) {
+	    	Parser<oracle.sql.DATE> p = new OracleDateParser();
+	    	//Operator<oracle.sql.DATE> op = new DateOperator();
+	    	//ColumnConnector<Date> connector = new OracleColumnConnector<Date>(jdbcConnector, schema, table, column, p); 
+	    	//profiler = new ColumnProfiler<Date>(schema, table, column, type, isEnum, connector, op, p);
+	  } 
+	  else if ((typeName.equals("char") || typeName.equals("varchar2") ||
+			  typeName.equals("nchar") || typeName.equals("varchar") ||
+			  typeName.equals("nvarchar")) && (type.getLength() == 1)) {
+	    	Parser<Character> p = new CharParser();
+	    	Operator<Character> op = new CharOperator();
+	    	ColumnConnector<Character> connector = new OracleColumnConnector<Character>(jdbcConnector, schema, table, column, p); 
+	    	profiler = new ColumnProfiler<Character>(schema, table, column, type, isEnum, connector, op, p);
+	  } 
+	  else {
+	    	Parser<String> p = new StringParser();
+	    	ColumnConnector<String> connector = new OracleColumnConnector<String>(jdbcConnector, schema, table, column, p);
+	    	Set<Constraint> constraints = connector.getConstraints();
+	    	if (constraints.contains(Constraint.UNIQUE) || constraints.contains(Constraint.PRIMARY_KEY))
+	    		throw new UnsupportedTypeException(typeName, Constraint.UNIQUE);
+	    	profiler = new PseudoColumnProfiler(schema, table, column, type, isEnum, connector);
+	    	LOGGER.warn(schema + "." + table + "." + column + " is not supported using pseudo profiler instead!");
+	  }
+	  return profiler;
+	 
+  }
+  
   public static void main(String[] args) throws TypeNotSupportedException {
     BasicConfigurator.configure();
     LOGGER.setLevel(Level.WARN);
@@ -197,17 +245,28 @@ public class Oligos {
       if (!cli.parse()) {
         System.exit(2);
       }
+      
       JdbcConnector jdbcConnector = cli.getJdbcConnector();
       jdbcConnector.connect(cli.getUsername(), cli.getPassword());
-      MetaConnector metaConnector = new Db2MetaConnector(jdbcConnector);
-      // validating schema
+      MetaConnector metaConnector = null;
+      Driver dbDriver = cli.dbDriver;
+      switch (dbDriver.driverName){
+	  		case db2:
+	  			metaConnector = new Db2MetaConnector(jdbcConnector);
+	  			break;
+	  		case oracle:
+	  			metaConnector = new OracleMetaConnector(jdbcConnector);
+	  			break;
+	  		default:
+	  			LOGGER.error("Unknown database driver (see Driver.java for known drivers)");
+	  }
+	  // validating schema
       LOGGER.info("Validating input schema ...");
       SparseSchema sparseSchema = cli.getInputSchema();
       LOGGER.trace("User specified schema " + sparseSchema);
-      DenseSchema inputSchema = DbUtils.populateSchema(sparseSchema,
-          jdbcConnector, metaConnector);
+      DenseSchema inputSchema = DbUtils.populateSchema(sparseSchema, jdbcConnector, metaConnector);
       LOGGER.trace("Populated and validated schema " + inputSchema);
-
+      
       // obtaining type information/ column meta data
       LOGGER.info("Retrieving column meta data ...");
       Map<ColumnId, TypeInfo> columnTypes = Maps.newLinkedHashMap();
@@ -215,11 +274,19 @@ public class Oligos {
         TypeInfo type = metaConnector.getColumnType(columnId);
         columnTypes.put(columnId, type);
       }
-
+      
       // creating connectors and profilers
       LOGGER.info("Establashing database connection ...");
-      SchemaConnector schemaConnector = new Db2SchemaConnector(jdbcConnector);
-      TableConnector tableConnector = new Db2TableConnector(jdbcConnector);
+      SchemaConnector schemaConnector = null;
+      TableConnector tableConnector = null;
+      switch(dbDriver.driverName){
+      case db2:
+    	   schemaConnector = new Db2SchemaConnector(jdbcConnector);
+    	   tableConnector = new Db2TableConnector(jdbcConnector);
+      case oracle:
+    	   schemaConnector = new OracleSchemaConnector(jdbcConnector);
+    	   tableConnector = new OracleTableConnector(jdbcConnector);
+      }
       Set<SchemaProfiler> profilers = Sets.newLinkedHashSet();
       for (String schema : inputSchema.schemas()) {
         SchemaProfiler schemaProfiler = new SchemaProfiler(schema,
@@ -232,13 +299,20 @@ public class Oligos {
           for (String column : inputSchema.columnsIn(schema, table)) {
             ColumnId columnId = new ColumnId(schema, table, column);
             TypeInfo type = columnTypes.get(columnId);
-            ColumnProfiler<?> columnProfiler = getProfiler(columnId, type,
-                jdbcConnector, metaConnector);
+            ColumnProfiler<?> columnProfiler = null;
+            switch(dbDriver.driverName){
+            case db2:
+                columnProfiler = getProfiler(schema, table, column, type, jdbcConnector, metaConnector);
+                break;
+            case oracle:
+                columnProfiler = getProfilerOracle(schema, table, column, type, jdbcConnector, metaConnector);
+                break;
+            }
             tableProfiler.addColumnProfiler(columnProfiler);
           }
         }
       }
-
+      
       // profiling statistical data
       LOGGER.info("Profiling schema ...");
       Set<Schema> profiledSchemas = Sets.newLinkedHashSet();
@@ -246,7 +320,7 @@ public class Oligos {
         Schema profiledSchema = schemaProfiler.profile();
         profiledSchemas.add(profiledSchema);
       }
-
+      
       LOGGER.info("Generating generator specification ...");
       File outputDir = cli.getOutputDirectory();
       String generatorName = cli.getGeneratorName();

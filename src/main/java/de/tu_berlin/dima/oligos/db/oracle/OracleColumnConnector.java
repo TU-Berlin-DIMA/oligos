@@ -1,3 +1,19 @@
+/*******************************************************************************
+ * Copyright 2013 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ******************************************************************************/
+
 package de.tu_berlin.dima.oligos.db.oracle;
 
 import java.sql.SQLException;
@@ -17,28 +33,6 @@ import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	
 	
-/* 
- *private final static String CONSTRAINT_QUERY =
-      "SELECT type " +
-      "FROM   SYSCAT.TABCONST tc, SYSCAT.KEYCOLUSE kcu " +
-      "WHERE  tc.constname = kcu.constname " +
-      "  AND  tc.tabschema = ? AND tc.tabname = ? AND kcu.colname = ?";
-  private final static String DOMAIN_QUERY =
-      "SELECT low2key, high2key, numnulls, colcard, nulls, typename, length, scale " +
-      "FROM   SYSCAT.COLUMNS " +
-      "WHERE  tabschema = ? AND tabname = ? AND colname = ?";
-  private final static String MOST_FREQUENT_QUERY =
-      "SELECT colvalue, valcount " +
-      "FROM   SYSSTAT.COLDIST " +
-      "WHERE  tabschema = ? AND tabname = ? AND colname = ? AND type = 'F' " +
-      "ORDER BY seqno";
-  private final static String QUANTILE_HISTOGRAM_QUERY =
-      "SELECT colvalue, valcount " +
-      "FROM   SYSSTAT.COLDIST " +
-      "WHERE  tabschema = ? AND tabname = ? AND colname = ? AND type = 'Q' " +
-      "ORDER BY seqno";
- * 	
- */
 	private final static String RAW2NUM_FUNC = 
 			"CREATE OR REPLACE FUNCTION raw2num(rawval IN RAW) RETURN NUMBER AUTHID DEFINER IS " +
 			"n NUMBER; " + 
@@ -108,6 +102,7 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 
 	@Override
 	public Set<Constraint> getConstraints() throws SQLException {
+		System.out.println("entering OracleColumnConnector:getConstraints");
 		Set<Constraint> constraints = Sets.newHashSet();
 		String con = this.connector.scalarQuery(CONSTRAINT_QUERY, "type", this.schema, this.table, this.column);
 		if (con != null) {
@@ -121,27 +116,35 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 		        constraints.add(Constraint.FOREIGN_KEY);
 		    }
 		}
+		System.out.println("leaving OracleColumnConnector:getConstraints");
 		return constraints;		
 	}
 
 	
 	@Override
 	public long getNumNulls() throws SQLException {
+		System.out.println("entering OracleColumnConnector:getNumNulls");
 		this.connector.execSQLCommand(RAW2NUM_FUNC, (Object) null);
+		System.out.println("leaving OracleColumnConnector:getNumNulls");
 		return this.connector.<Long>scalarQuery(DOMAIN_QUERY, "num_nulls", this.schema, this.table, this.column);
 	}
 
 	@Override
 	public long getCardinality() throws SQLException {
+		System.out.println("entering OracleColumnConnector:getCardinality");
 		this.connector.execSQLCommand(RAW2NUM_FUNC, (Object) null);
-		return this.connector.<Long>scalarQuery(DOMAIN_QUERY, "num_distinct", this.schema, this.table, this.column);
+		long ret = this.connector.<Long>scalarQuery(DOMAIN_QUERY, "num_distinct", this.schema, this.table, this.column);
+		System.out.println("leaving OracleColumnConnector:getNumNulls");
+		return ret;
 	}
 	
 	@Override
 	public T getMin() throws SQLException {
+		System.out.println("entering OracleColumnConnector:getMin");
 		this.connector.execSQLCommand(RAW2NUM_FUNC, (Object) null);
 		String minStr = this.connector.scalarQuery(DOMAIN_QUERY, "low_value", this.schema, this.table, this.column);
-	    return this.parser.fromString(minStr);
+		System.out.println("leaving OracleColumnConnector:getMin");
+		return this.parser.fromString(minStr);
 	}
 
 	@Override

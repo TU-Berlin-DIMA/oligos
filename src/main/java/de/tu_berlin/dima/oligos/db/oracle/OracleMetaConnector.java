@@ -15,6 +15,7 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.db.oracle;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Map;
 
@@ -39,10 +40,10 @@ public class OracleMetaConnector implements MetaConnector {
 	private final static String ENUMERATED_QUERY = 
 			"SELECT num_most_frequent, atc.num_distinct " +
 			"FROM (SELECT COUNT(*) as num_most_frequent " +
-			"FROM ALL_TAB_HISTOGRAMS WHERE owner = 'TPCH' " +
-			"AND table_name = 'H_SUPPLIER' AND column_name = 'S_NAME'), "+
-			"ALL_TAB_COL_STATISTICS atc WHERE atc.table_name = 'H_SUPPLIER' "+
-			"AND atc.column_name = 'S_NAME'";
+			"FROM ALL_TAB_HISTOGRAMS WHERE owner = ? " +
+			"AND table_name = ? AND column_name = ?), "+
+			"ALL_TAB_COL_STATISTICS atc WHERE atc.owner = ? "+
+			"AND atc.table_name = ? AND atc.column_name = ?";
 	
 	private final static String DOMAIN_QUERY =  
 			"SELECT num_distinct FROM ALL_TAB_COLUMNS "+
@@ -83,7 +84,8 @@ public class OracleMetaConnector implements MetaConnector {
 
 	@Override
 	public boolean hasStatistics(String schema, String table, String column) throws SQLException {
-		Long card = connector.scalarQuery(DOMAIN_QUERY, "NUM_DISTINCT", schema, table, column);
+		BigDecimal aux = connector.scalarQuery(DOMAIN_QUERY, "NUM_DISTINCT", schema, table, column);
+		Long card = aux.longValueExact();
 		if (card != null) {
 			return (card != -1) ? true : false; 
 		} else {
@@ -104,8 +106,10 @@ public class OracleMetaConnector implements MetaConnector {
 		Map<String, Object> result = connector.mapQuery(
 	            ENUMERATED_QUERY, schema, table, column, schema, table, column);
 	    if (result != null) {
-	    	long colCard = (Long) result.get("NUM_DISTINCT");
-	        int numMostFreq = (Integer) result.get("NUM_MOST_FREQUENT");
+	    	BigDecimal aux = (BigDecimal) result.get("NUM_DISTINCT");
+	    	long colCard = (Long) aux.longValueExact();
+	    	aux = (BigDecimal) result.get("NUM_MOST_FREQUENT");
+	        int numMostFreq = aux.intValueExact();
 	        return colCard <= numMostFreq;
 	    } else {
 	    	throw new ColumnDoesNotExistException(schema, table, column);

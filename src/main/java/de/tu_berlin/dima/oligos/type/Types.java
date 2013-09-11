@@ -30,6 +30,7 @@ public class Types {
 
   private Types(){};
   
+  /* convert SQL data type into a convenient Java class */
   public static Class<?> convert(int typeNumber) {
     Class<?> result = Object.class;
 
@@ -95,6 +96,7 @@ public class Types {
     return result;
   }
 
+  /* convert CHAR(1) or VARCHAR(1) into Java's Character class */
   public static Class<?> convert(int typeNumber, int length) {
     if ((typeNumber == java.sql.Types.CHAR || typeNumber == java.sql.Types.VARCHAR) 
         && length == 1) {

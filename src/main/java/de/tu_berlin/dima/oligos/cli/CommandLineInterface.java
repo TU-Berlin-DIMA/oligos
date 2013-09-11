@@ -25,6 +25,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 import org.apache.commons.lang3.StringUtils;
 
+import de.tu_berlin.dima.oligos.Driver;
 import de.tu_berlin.dima.oligos.Oligos;
 import de.tu_berlin.dima.oligos.SparseSchema;
 import de.tu_berlin.dima.oligos.db.JdbcConnector;
@@ -35,13 +36,14 @@ public class CommandLineInterface {
       .addOption("u", "username", true, "Username for database connection")
       .addOption("p", "password", true, "Password for database connection")
       .addOption("h", "hostname", true, "Connect to given host")
+      .addOption("j", "jdbc", true, "Database-specific driver: 'db2' or 'ora'" )
       .addOption("D", "database", true, "Use given database")
       .addOption("P", "port", true, "Database port")
       .addOption("o", "output", true, "Path to the output folder")
       .addOption("g", "generator", true, "Name of the generator")
       .addOption("", "help", false, "Show help");
   private static final String USAGE = Oligos.class.getSimpleName() +
-      " -u <user> -h <host> -d <database> -p <port> -g <generator name> SCHEMA";
+      " -u <user> -h <host> -d <database> -p <port> -g <generator name> [-j <db driver flag>] SCHEMA";
   private static final String HEADER = Oligos.class.getSimpleName()
       + " is a application to infer statistical information from a database catalog.";
 
@@ -55,10 +57,12 @@ public class CommandLineInterface {
   private File outputDirectory;
   private String generatorName;
   private SparseSchema inputSchema;
+  public Driver dbDriver;
 
   public CommandLineInterface(String[] args) {
     this.inputString = args;
     this.helpFormatter = new HelpFormatter();
+    this.dbDriver = null;
   }
 
   public boolean parse() throws ParseException {
@@ -69,7 +73,8 @@ public class CommandLineInterface {
       String hostname = commandLine.getOptionValue("hostname");
       int port = Integer.parseInt(commandLine.getOptionValue("port"));
       String database = commandLine.getOptionValue("database");
-      String dbDriver = JdbcConnector.IBM_JDBC_V4;
+      // use DB2_JDBC or Oracle_JDBC driver
+      this.dbDriver = new Driver(commandLine.getOptionValue("jdbc"));
       this.username = commandLine.getOptionValue("username");
       this.password = commandLine.getOptionValue("password");
       this.jdbcConnector = new JdbcConnector(hostname, port, database, dbDriver);
@@ -156,6 +161,11 @@ public class CommandLineInterface {
           .println("Please specify a password for the database connection");
       formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
       return false;
+    }
+    if (!cmd.hasOption("jdbc")){
+    	System.out.println("Please specify a jdbc driver (db2 or oracle) for the database connection");
+    	formatter.printHelp(Oligos.class.getSimpleName(), OPTS);
+    	return false;
     }
 
     return true;
