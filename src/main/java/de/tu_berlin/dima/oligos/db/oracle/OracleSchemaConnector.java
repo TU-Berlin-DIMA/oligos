@@ -13,36 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package de.tu_berlin.dima.oligos.db.db2;
+package de.tu_berlin.dima.oligos.db.oracle;
 
 import java.sql.SQLException;
 import java.util.Set;
 
 import org.javatuples.Quartet;
-
 import de.tu_berlin.dima.oligos.db.JdbcConnector;
 import de.tu_berlin.dima.oligos.db.SchemaConnector;
 
-public class Db2SchemaConnector implements SchemaConnector {
+public class OracleSchemaConnector implements SchemaConnector {
 
-  public final static String REFERENCES_QUERY =
-      "SELECT reftbname as parent_table " +
-      "     , tbname as child_table " +
-      "     , pkcolnames " +
-      "     , fkcolnames " +
-      "FROM SYSIBM.SYSRELS " +
-      "WHERE creator = ?";
-
-  private final JdbcConnector connector;
-
-  public Db2SchemaConnector(final JdbcConnector jdbcConnector) {
-    this.connector = jdbcConnector;
-  }
-
-  public Set<Quartet<String, String, String, String>> getReferences(final String schema)
-      throws SQLException {
-    Set<Quartet<String, String, String, String>> references = connector.getReferences(schema);
-    return references;
-  }
-
+	private final JdbcConnector connector;
+	
+	 public OracleSchemaConnector(final JdbcConnector jdbcConnector) {
+		    this.connector = jdbcConnector;
+	 }
+	
+	@Override
+	public Set<Quartet<String, String, String, String>> getReferences(String schema) throws SQLException {
+		return this.connector.getReferences(schema);
+	}
 }
