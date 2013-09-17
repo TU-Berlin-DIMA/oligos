@@ -173,7 +173,6 @@ public class JdbcConnector {
   }
 
   public TypeInfo typeQuery(
-      final String query,
       final String schema,
       final String table,
       final String column) throws SQLException {
