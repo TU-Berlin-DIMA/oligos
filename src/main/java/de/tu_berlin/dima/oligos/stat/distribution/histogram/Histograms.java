@@ -15,9 +15,11 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.stat.distribution.histogram;
 
+import java.sql.SQLException;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.SortedSet;
+
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
@@ -25,7 +27,7 @@ import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
 public abstract class Histograms {
 
-  public static <T> Histogram<T> combineHistograms(Histogram<T> hist, Map<T, Long> mostFrequent, Operator<T> operator) {
+  public static <T> Histogram<T> combineHistograms(Histogram<T> hist, Map<T, Long> mostFrequent, Operator<T> operator) throws SQLException {
     Histogram<T> histogram = new CustomHistogram<T>(operator);
     // Make a deep copy to keep function side effect free
     mostFrequent = Maps.newHashMap(mostFrequent);

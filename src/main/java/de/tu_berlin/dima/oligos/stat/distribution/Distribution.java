@@ -15,13 +15,15 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.stat.distribution;
 
+import java.sql.SQLException;
+
 public interface Distribution<T> {
   
-  public T getMin();
+  public T getMin() throws SQLException;
   
-  public T getMax();
+  public T getMax() throws SQLException;
   
-  public long getCardinality();
+  public long getCardinality() throws SQLException;
   
   public double getProbabilityOf(T value);
 

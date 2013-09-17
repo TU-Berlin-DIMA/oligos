@@ -18,6 +18,8 @@ package de.tu_berlin.dima.oligos.io;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.sql.SQLException;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -32,6 +34,7 @@ import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
+
 import de.tu_berlin.dima.oligos.stat.Column;
 import de.tu_berlin.dima.oligos.stat.Schema;
 import de.tu_berlin.dima.oligos.stat.Table;
@@ -71,7 +74,7 @@ public class MyriadWriter implements Writer {
     }
   }
   
-  public void write() throws IOException {
+  public void write() throws IOException, SQLException {
     String schemaName = schema.getName();
     Node parameters = document.getElementsByTagName(Tag.Parameters.getName()).item(0);
     Node functions = document.getElementsByTagName(Tag.Functions.getName()).item(0);

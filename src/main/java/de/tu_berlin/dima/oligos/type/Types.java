@@ -40,7 +40,12 @@ public class Types {
       case java.sql.Types.LONGVARCHAR:
         result = String.class;
         break;
-
+      
+      
+     /* case oracle.jdbc.OracleTypes.NUMBER:
+        result = BigDecimal.class;
+        break;*/
+        
       case java.sql.Types.NUMERIC:
       case java.sql.Types.DECIMAL:
         result = BigDecimal.class;

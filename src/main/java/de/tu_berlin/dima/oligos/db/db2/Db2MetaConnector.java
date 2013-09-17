@@ -20,7 +20,6 @@ import java.util.Map;
 
 import de.tu_berlin.dima.oligos.db.JdbcConnector;
 import de.tu_berlin.dima.oligos.db.MetaConnector;
-import de.tu_berlin.dima.oligos.db.MetaConnector2;
 import de.tu_berlin.dima.oligos.exception.ColumnDoesNotExistException;
 import de.tu_berlin.dima.oligos.type.util.ColumnId;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;

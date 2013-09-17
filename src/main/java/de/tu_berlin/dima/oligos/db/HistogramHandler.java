@@ -19,6 +19,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import org.apache.commons.dbutils.ResultSetHandler;
+import oracle.sql.DATE;
 
 import com.google.common.collect.Maps;
 
@@ -58,9 +59,9 @@ public class HistogramHandler<T> implements ResultSetHandler<Map<T, Long>> {
   public Map<T, Long> handle(ResultSet rs) throws SQLException {
     Map<T, Long> mostFrequentValues = Maps.newLinkedHashMap();
     while (rs.next()) {
-      String colvalue = (keyColumnName != null) ? rs.getString(keyColumnName) : rs.getString(keyColumnIndex) ;
+    	String colvalue = (keyColumnName != null) ? rs.getString(keyColumnName) : rs.getString(keyColumnIndex) ;
       if (colvalue != null) {
-        T value = parser.fromString(colvalue.replaceAll("'", ""));
+      	T value = parser.fromString(colvalue.replaceAll("'", ""));
         long count = (valColumnName != null) ? rs.getLong(valColumnName) : rs.getLong(valColumnIndex);
         mostFrequentValues.put(value, count);
       }

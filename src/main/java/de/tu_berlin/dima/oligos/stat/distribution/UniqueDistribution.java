@@ -15,6 +15,8 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.stat.distribution;
 
+import java.sql.SQLException;
+
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
 public class UniqueDistribution<T> implements Distribution<T> {
@@ -31,7 +33,7 @@ public class UniqueDistribution<T> implements Distribution<T> {
     this.probability = 1.0 / cardinality;
   }
   
-  public UniqueDistribution(final T min, final T max, final Operator<T> operator) {
+  public UniqueDistribution(final T min, final T max, final Operator<T> operator) throws SQLException {
     this.min = min;
     this.max = max;
     this.cardinality = operator.range(min, max);

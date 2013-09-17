@@ -15,6 +15,7 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.stat.distribution.histogram;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.SortedSet;
 
@@ -45,7 +46,7 @@ public interface Histogram<T> extends Distribution<T>, Iterable<Bucket<T>> {
 
   public Histogram<T> getNonExactValues();
 
-  public SortedSet<T> getLowerBounds();
+  public SortedSet<T> getLowerBounds() throws SQLException;
 
   public SortedSet<T> getUpperBounds();
 

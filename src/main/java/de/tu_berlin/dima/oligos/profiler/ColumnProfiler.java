@@ -64,7 +64,7 @@ public class ColumnProfiler<T> implements Profiler<Column<T>> {
 
   public QuantileHistogram<T> getQuantileHistogram() {
     try {
-      Map<T, Long> rawHist = connector.getHistogram();
+    	Map<T, Long> rawHist = connector.getHistogram();
       T min = getMin(connector.getMin(), rawHist.keySet());
       QuantileHistogram<T> histogram = new QuantileHistogram<T>(min, operator);
       for (Entry<T, Long> entry : rawHist.entrySet()) {
@@ -79,22 +79,22 @@ public class ColumnProfiler<T> implements Profiler<Column<T>> {
   }
 
   public Column<T> profile() {
-    try {
-      Set<Constraint> constraints = connector.getConstraints();
+  	try {
+    	Set<Constraint> constraints = connector.getConstraints();
       T min = connector.getMin();
-      T max = connector.getMax();
-      long cardinality = connector.getCardinality();
-      long numNulls = connector.getNumNulls();
-      Histogram<T> distribution = null;
-      if (isEnum) {
-        distribution = new CustomHistogram<T>(operator);
-        for (Entry<T, Long> e : connector.getMostFrequentValues().entrySet()) {
-          distribution.add(e.getKey(), e.getKey(), e.getValue());
-        }
-      } else {
-        distribution = getQuantileHistogram();
-      }
-      return new Column<T>(schema, table, column, type, constraints, min, max,
+    	T max = connector.getMax();
+    	long cardinality = connector.getCardinality();
+  		long numNulls = connector.getNumNulls();
+  		Histogram<T> distribution = null;
+  		if (isEnum) {
+  			distribution = new CustomHistogram<T>(operator);
+  			for (Entry<T, Long> e : connector.getMostFrequentValues().entrySet()) {
+  				distribution.add(e.getKey(), e.getKey(), e.getValue());
+  			}
+  		} else {
+  			distribution = getQuantileHistogram();
+  		}
+  		return new Column<T>(schema, table, column, type, constraints, min, max,
           cardinality, numNulls, distribution, parser);
     } catch (SQLException e) {
       throw new RuntimeException(e);

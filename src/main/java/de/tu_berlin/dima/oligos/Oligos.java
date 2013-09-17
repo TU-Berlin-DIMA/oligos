@@ -22,6 +22,7 @@ import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
@@ -30,6 +31,8 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+
+import oracle.sql.DATE;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -63,6 +66,7 @@ import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.operator.CharOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.DateOperator;
+import de.tu_berlin.dima.oligos.type.util.operator.date.OracleDateOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.TimeOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.TimestampOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.BigDecimalOperator;
@@ -200,41 +204,45 @@ public class Oligos {
 	  ColumnProfiler<?> profiler = null;
 	  String typeName = type.getTypeName().toLowerCase();
 	  boolean isEnum = metaConnector.isEnumerated(schema, table, column);
+	  //System.out.println("typeName = " + typeName);
 	  if (typeName.equals("number")) {
 		  Parser<BigDecimal> p = new BigDecimalParser();
 		  Operator<BigDecimal> op = new BigDecimalOperator();
-		  ColumnConnector<BigDecimal> connector = new OracleColumnConnector<BigDecimal>(jdbcConnector, schema, table, column, p); 
+		  ColumnConnector<BigDecimal> connector = new OracleColumnConnector<BigDecimal>(jdbcConnector, schema, table, column, BigDecimal.class, p); 
 		  profiler = new ColumnProfiler<BigDecimal>(schema, table, column, type, isEnum, connector, op, p);
 	  } 
 	  // TODO new data type including date+time
 	  else if (typeName.equals("date")) {
-	    	Parser<oracle.sql.DATE> p = new OracleDateParser();
-	    	//Operator<oracle.sql.DATE> op = new DateOperator();
-	    	//ColumnConnector<Date> connector = new OracleColumnConnector<Date>(jdbcConnector, schema, table, column, p); 
-	    	//profiler = new ColumnProfiler<Date>(schema, table, column, type, isEnum, connector, op, p);
+	  		Parser<oracle.sql.DATE> p = new OracleDateParser();
+	  		Operator<oracle.sql.DATE> op = new OracleDateOperator();
+	    	ColumnConnector<oracle.sql.DATE> connector = new OracleColumnConnector<oracle.sql.DATE>(jdbcConnector, schema, table, column, Date.class, p); 
+	    	profiler = new ColumnProfiler<oracle.sql.DATE>(schema, table, column, type, isEnum, connector, op, p);
 	  } 
-	  else if ((typeName.equals("char") || typeName.equals("varchar2") ||
-			  typeName.equals("nchar") || typeName.equals("varchar") ||
-			  typeName.equals("nvarchar")) && (type.getLength() == 1)) {
+	  else if (typeName.equals("char") || typeName.equals("nchar")) {
 	    	Parser<Character> p = new CharParser();
 	    	Operator<Character> op = new CharOperator();
-	    	ColumnConnector<Character> connector = new OracleColumnConnector<Character>(jdbcConnector, schema, table, column, p); 
+	    	ColumnConnector<Character> connector = new OracleColumnConnector<Character>(jdbcConnector, schema, table, column, Character.class, p); 
 	    	profiler = new ColumnProfiler<Character>(schema, table, column, type, isEnum, connector, op, p);
 	  } 
-	  else {
+	  else if (typeName.equals("varchar2") || typeName.equals("nvarchar2") || 
+	  		typeName.equals("varchar") || typeName.equals("nvarchar")) {
 	    	Parser<String> p = new StringParser();
-	    	ColumnConnector<String> connector = new OracleColumnConnector<String>(jdbcConnector, schema, table, column, p);
+	    	ColumnConnector<String> connector = new OracleColumnConnector<String>(jdbcConnector, schema, table, column, String.class, p);
 	    	Set<Constraint> constraints = connector.getConstraints();
 	    	if (constraints.contains(Constraint.UNIQUE) || constraints.contains(Constraint.PRIMARY_KEY))
 	    		throw new UnsupportedTypeException(typeName, Constraint.UNIQUE);
 	    	profiler = new PseudoColumnProfiler(schema, table, column, type, isEnum, connector);
 	    	LOGGER.warn(schema + "." + table + "." + column + " is not supported using pseudo profiler instead!");
 	  }
+	  else {
+	  	LOGGER.error("unsupported column type: " + typeName);
+	  }
 	  return profiler;
 	 
   }
   
   public static void main(String[] args) throws TypeNotSupportedException {
+  	
     BasicConfigurator.configure();
     LOGGER.setLevel(Level.WARN);
 
@@ -312,7 +320,6 @@ public class Oligos {
           }
         }
       }
-      
       // profiling statistical data
       LOGGER.info("Profiling schema ...");
       Set<Schema> profiledSchemas = Sets.newLinkedHashSet();

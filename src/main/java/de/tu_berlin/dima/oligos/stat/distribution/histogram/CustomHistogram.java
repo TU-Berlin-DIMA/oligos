@@ -15,6 +15,7 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.stat.distribution.histogram;
 
+import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
@@ -50,7 +51,7 @@ public class CustomHistogram<T> extends AbstractHistogram<T> {
   }
 
   @Override
-  public T getMin() {
+  public T getMin() throws SQLException {
     return getOperator().increment(lowerBounds.first());
   }
 

@@ -13,24 +13,44 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
+
 package de.tu_berlin.dima.oligos.type.util.parser;
 
-import java.sql.Date;
+//import java.sql.Date;
+//import java.text.SimpleDateFormat;
 import java.text.SimpleDateFormat;
 
-public class DateParser extends AbstractParser<Date> {
+import oracle.sql.DATE;
+import oracle.sql.converter.*;
+
+public class OracleDateParser extends AbstractParser<oracle.sql.DATE> {
   
-  private final static String DEFAULT_OUTPUT_FORMAT = "yyyy-MM-dd";
+  private final static String DEFAULT_OUTPUT_FORMAT = "yyyy-mm-dd hh:mm:ss.a"; //"yyyy/mm/dd:hh:mi:ssam";
   
-  @Override
+  /*
+   *   @Override
   public Date fromString(String value) {
-  	return Date.valueOf(removeQuotes(value));
+    return Date.valueOf(removeQuotes(value));
   }
 
   @Override
   public String toString(Object value) {
     SimpleDateFormat outFormat = new SimpleDateFormat(DEFAULT_OUTPUT_FORMAT);
     return outFormat.format(value);
+  }
+   * */
+  // TODO: test correctness
+  @Override
+  public oracle.sql.DATE fromString(String value) {
+	  System.out.println("date value = " + value);
+	  oracle.sql.DATE date = new oracle.sql.DATE(value);
+ 	  return date;
+  }
+
+  @Override
+  public String toString(Object value) {
+	  SimpleDateFormat outFormat = new SimpleDateFormat(DEFAULT_OUTPUT_FORMAT);
+	  return outFormat.format(value);
   }
 
 }

@@ -68,7 +68,7 @@ public class JdbcConnector {
 
   public void connect(final String user, final String pass) throws SQLException {
 	  String cs = getConnectionString();
-//	  DriverManager.setLogWriter( new PrintWriter(System.out) );
+	  //DriverManager.setLogWriter( new PrintWriter(System.out) );
 	  connection = DriverManager.getConnection(cs, user, pass);
 	  metaData = connection.getMetaData();
 	}
@@ -180,10 +180,35 @@ public class JdbcConnector {
   public void execSQLCommand(
 	      final String query,
 	      final Object... parameters) throws SQLException {
-  ResultSetHandler handler = new ScalarHandler();
-	QueryRunner runner = new QueryRunner();
-	runner.query(connection, query, handler, parameters);
+  	
+  	ResultSetHandler handler = new ScalarHandler();
+  	QueryRunner runner = new QueryRunner();
+  	runner.query(connection, query, handler, parameters);	
   }
+  // TODO allow grouping transactions
+  
+  /* execute prepared statement */
+  public void execPreparedStmt(final String stmt, final Object... parameters) throws SQLException{
+  	PreparedStatement ps = null;
+  	try{
+  		ps = connection.prepareStatement(stmt);	
+  		for (int i = 1; i <= parameters.length; i++) {
+  	    ps.setString(i, (String) parameters[i-1]);
+      }
+  		int res = ps.executeUpdate(); // void sql query
+  		connection.commit();
+  		
+  	}
+  	catch(SQLException e){
+  		e.printStackTrace();
+  	}
+  	finally{
+  		if (ps != null){
+  			ps.close();
+    	}
+  	}
+  }
+  
   
   public Map<String, Object> mapQuery(
       final String query,
@@ -199,11 +224,12 @@ public class JdbcConnector {
       final String valueColumnName,
       final Parser<T> parser,
       final Object...parameters) throws SQLException {
-    ResultSetHandler<Map<T, Long>> handler = new HistogramHandler<T>(keyColumnName, valueColumnName, parser);
+  	ResultSetHandler<Map<T, Long>> handler = new HistogramHandler<T>(keyColumnName, valueColumnName, parser);
     QueryRunner runner = new QueryRunner();
-    return runner.query(connection, query, handler, parameters);
+    Map<T, Long> ret = runner.query(connection, query, handler, parameters);
+    return ret;
   }
-
+  
   public TypeInfo typeQuery(
       final String query,
       final String schema,

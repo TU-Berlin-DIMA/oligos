@@ -16,9 +16,10 @@
 package de.tu_berlin.dima.oligos.io;
 
 import java.io.IOException;
+import java.sql.SQLException;
 
 public interface Writer {
 
-  public void write() throws IOException;
+  public void write() throws IOException, SQLException;
 
 }

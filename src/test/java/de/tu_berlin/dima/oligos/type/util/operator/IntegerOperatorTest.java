@@ -17,6 +17,7 @@ package de.tu_berlin.dima.oligos.type.util.operator;
 
 import static org.junit.Assert.*;
 
+import java.sql.SQLException;
 import java.util.Random;
 
 import org.junit.Before;
@@ -38,7 +39,7 @@ public class IntegerOperatorTest {
   }
 
   @Test
-  public void testIncrement() {
+  public void testIncrement() throws SQLException {
     for (int i = 0; i < ITERATIONS; i++) {
       Integer value = rand.nextInt();
       assertTrue(value + 1 == operator.increment(value));
@@ -46,7 +47,7 @@ public class IntegerOperatorTest {
   }
 
   @Test
-  public void testDecrement() {
+  public void testDecrement() throws SQLException {
     for (int i = 0; i < ITERATIONS; i++) {
       Integer value = rand.nextInt();
       assertTrue(value - 1 == operator.decrement(value));
@@ -54,7 +55,7 @@ public class IntegerOperatorTest {
   }
 
   @Test
-  public void testRange() {
+  public void testRange() throws SQLException {
     for (int i = 0; i < ITERATIONS; i++) {
       Integer val1 = rand.nextInt();
       Integer val2 = rand.nextInt();

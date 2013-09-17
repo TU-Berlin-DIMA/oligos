@@ -17,11 +17,13 @@ package de.tu_berlin.dima.oligos.io;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
+
 import de.tu_berlin.dima.oligos.stat.Column;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.Bucket;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.Histogram;
@@ -62,7 +64,7 @@ public class DistributionWriter implements Writer {
     return strBld.toString();
   }
 
-  public String getDistributionString() {
+  public String getDistributionString() throws SQLException {
     Class<?> type = column.getTypeInfo().getType();
     StringBuilder strBld = new StringBuilder();
     boolean isEnum = column.isEnumerated();
@@ -110,7 +112,7 @@ public class DistributionWriter implements Writer {
   }
 
   @Override
-  public void write() throws IOException {
+  public void write() throws IOException, SQLException {
     distributionFile.mkdirs();
     distributionFile.delete();
     distributionFile.createNewFile();

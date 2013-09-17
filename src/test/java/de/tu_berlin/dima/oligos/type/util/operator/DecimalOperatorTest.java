@@ -18,6 +18,7 @@ package de.tu_berlin.dima.oligos.type.util.operator;
 import static org.junit.Assert.*;
 
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.util.Random;
 
 import org.junit.Before;
@@ -64,7 +65,7 @@ public class DecimalOperatorTest {
   }
 
   @Test
-  public void testIncrement() {
+  public void testIncrement() throws SQLException {
     BigDecimal step = BigDecimal.valueOf(1, SCALE);
     for (int i = 0; i < ITERATIONS; i++) {
       BigDecimal orig = BigDecimal.valueOf(rand.nextLong(), SCALE);
@@ -74,7 +75,7 @@ public class DecimalOperatorTest {
   }
 
   @Test
-  public void testDecrement() {
+  public void testDecrement() throws SQLException {
     BigDecimal step = BigDecimal.valueOf(1, SCALE);
     for (int i = 0; i < ITERATIONS; i++) {
       BigDecimal orig = BigDecimal.valueOf(rand.nextLong(), SCALE);
@@ -84,7 +85,7 @@ public class DecimalOperatorTest {
   }
 
   @Test
-  public void testRange() {
+  public void testRange() throws SQLException {
     assertEquals(10, op.range(first, second));
     for (int i = 0; i < ITERATIONS; i++) {
       BigDecimal val1 = BigDecimal.valueOf(rand.nextLong(), SCALE);

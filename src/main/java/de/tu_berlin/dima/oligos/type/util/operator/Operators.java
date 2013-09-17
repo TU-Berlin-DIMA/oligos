@@ -17,6 +17,7 @@ package de.tu_berlin.dima.oligos.type.util.operator;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
@@ -24,14 +25,14 @@ import java.util.Date;
 
 public final class Operators {
 
-  public static <T> T increment(T value) {
+  public static <T> T increment(T value) throws SQLException {
     @SuppressWarnings("unchecked")
     Class<T> clazz = (Class<T>) value.getClass();
     Operator<T> op = OperatorManager.getOperator(clazz);
     return op.increment(value);
   }
 
-  public static <T> T decrement(T value) {
+  public static <T> T decrement(T value) throws SQLException {
     @SuppressWarnings("unchecked")
     Class<T> clazz = (Class<T>) value.getClass();
     Operator<T> op = OperatorManager.getOperator(clazz);

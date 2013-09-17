@@ -60,7 +60,7 @@ public class TableProfiler implements Profiler<Table> {
   
   private Set<Column<?>> getColumnStatistics() {
     Set<Column<?>> columns = Sets.newLinkedHashSet();
-    for (ColumnProfiler<?> profiler : columnProfilers) {
+  	for (ColumnProfiler<?> profiler : this.columnProfilers) {
       Column<?> column = profiler.profile();
       columns.add(column);
     }
