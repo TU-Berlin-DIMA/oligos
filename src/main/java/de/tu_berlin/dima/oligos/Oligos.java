@@ -82,7 +82,6 @@ import de.tu_berlin.dima.oligos.type.util.parser.DoubleParser;
 import de.tu_berlin.dima.oligos.type.util.parser.FloatParser;
 import de.tu_berlin.dima.oligos.type.util.parser.IntegerParser;
 import de.tu_berlin.dima.oligos.type.util.parser.LongParser;
-import de.tu_berlin.dima.oligos.type.util.parser.OracleDateParser;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 import de.tu_berlin.dima.oligos.type.util.parser.ShortParser;
 import de.tu_berlin.dima.oligos.type.util.parser.StringParser;

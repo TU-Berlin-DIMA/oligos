@@ -15,6 +15,9 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.type.util;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class TypeInfo {
   
   private final String typeName;
@@ -43,6 +46,21 @@ public class TypeInfo {
 
   public Class<?> getType() {
     return type;
+  }
+  
+  public String getDbTypeString() {
+    String typeString = typeName;
+    Set<String> specialTypes = new HashSet<String>();
+    specialTypes.add("decimal");
+    specialTypes.add("char");
+    specialTypes.add("varchar");
+    if (typeName.equalsIgnoreCase("char") || typeName.equalsIgnoreCase("varchar")) {
+      return typeString + "(" + length + ")";
+    } else if (typeName.equalsIgnoreCase("decimal")) {
+      return typeString + "(" + length + ", " + scale + ")";
+    } else {
+      return typeString;
+    }
   }
   
   @Override
