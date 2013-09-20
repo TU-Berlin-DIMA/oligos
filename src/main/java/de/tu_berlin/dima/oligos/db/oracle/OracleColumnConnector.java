@@ -18,10 +18,8 @@ package de.tu_berlin.dima.oligos.db.oracle;
 
 import java.sql.SQLException;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import de.tu_berlin.dima.oligos.db.ColumnConnector;
