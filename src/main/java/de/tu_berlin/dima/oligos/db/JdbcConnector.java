@@ -15,7 +15,6 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.db;
 
-import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -33,12 +32,15 @@ import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.commons.dbutils.handlers.MapHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 import org.javatuples.Quartet;
 
 import de.tu_berlin.dima.oligos.Driver;
+import de.tu_berlin.dima.oligos.db.constraints.ForeignKey;
+import de.tu_berlin.dima.oligos.db.handler.jdbc.ForeignKeysHandler;
 import de.tu_berlin.dima.oligos.type.Types;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
@@ -68,7 +70,6 @@ public class JdbcConnector {
 
   public void connect(final String user, final String pass) throws SQLException {
 	  String cs = getConnectionString();
-//	  DriverManager.setLogWriter( new PrintWriter(System.out) );
 	  connection = DriverManager.getConnection(cs, user, pass);
 	  metaData = connection.getMetaData();
 	}
@@ -109,11 +110,21 @@ public class JdbcConnector {
     DbUtils.close(result);
     return columns;
   }
-  
+
+  /**
+   * Use 
+   * {@link JdbcConnector#getForeignKeys(String)},
+   * {@link JdbcConnector#getImportedKeys(String, String)}, or
+   * {@link JdbcConnector#getExportedKeys(String, String)} instead.
+   * @param schema
+   * @return
+   * @throws SQLException
+   */
+  @Deprecated
   public Set<Quartet<String, String, String, String>> getReferences(final String schema) throws SQLException{
 	  Set<Quartet<String, String, String, String>> references = Sets.newHashSet();
 	  ResultSet result;
-	  List<String> tables = (List<String>) this.getTables(schema);
+	  Collection<String> tables = this.getTables(schema);
 	  for (String table: tables){
 		  result = this.metaData.getExportedKeys(null, schema, table);
 		  while (result.next()){
@@ -126,6 +137,60 @@ public class JdbcConnector {
 		  }
 	  }
 	  return references;
+  }
+
+  /**
+   * Retrieves all foreign keys from the given schema.
+   * @param schema
+   * @return A <code>Set</code> containing no, one, or more <code>ForeignKey</code>s.
+   * @throws SQLException
+   */
+  public Set<ForeignKey> getForeignKeys(final String schema) throws SQLException {
+    Preconditions.checkArgument(schema != null && !schema.isEmpty());
+    Set<ForeignKey> fKeys = Sets.newHashSet();
+    for (String table : getTables(schema)) {
+      ResultSet result = metaData.getExportedKeys(null, schema, table);
+      ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler();
+      Set<ForeignKey> fks = handler.handle(result);
+      fKeys.addAll(fks);
+    }
+    return fKeys;
+  }
+
+  /**
+   * Retrieves all keys imported by the given table. That is all tables that are
+   * referenced by the given schema and table.
+   * @param schema Name of the schema
+   * @param table Name of the table
+   * @return A <code>Set</code> of all <code>ForeignKey</code>s, where the given
+   * table is the <em>child</em> table.
+   * @throws SQLException
+   */
+  public Set<ForeignKey> getImportedKeys(final String schema, final String table)
+    throws SQLException {
+    Preconditions.checkArgument(schema != null && table != null);
+    Preconditions.checkArgument(!schema.isEmpty() && !table.isEmpty());
+    ResultSet result = metaData.getImportedKeys(null, schema, table);
+    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler();
+    return handler.handle(result);
+  }
+
+  /**
+   * Retrieves all keys exported by the given table. That is all tables that are 
+   * referencing the given table.
+   * @param schema Name of the schema
+   * @param table Name of the table
+   * @return A <code>Set</code> of all <code>ForeignKey</code>s, where the given
+   * table is the <em>parent</em> table.
+   * @throws SQLException
+   */
+  public Set<ForeignKey> getExportedKeys(final String schema, final String table)
+    throws SQLException {
+    Preconditions.checkArgument(schema != null && table != null);
+    Preconditions.checkArgument(!schema.isEmpty() && !table.isEmpty());
+    ResultSet result = metaData.getExportedKeys(null, schema, table);
+    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler();
+    return handler.handle(result);
   }
 
   public boolean checkSchema(final String schema) throws SQLException {
@@ -208,7 +273,7 @@ public class JdbcConnector {
       final String schema,
       final String table,
       final String column) throws SQLException {
-    ResultSet result = connection.getMetaData().getColumns(null, schema, table, column);
+    ResultSet result = metaData.getColumns(null, schema, table, column);
     if (result.next()){
     String typeName = (String) result.getString("TYPE_NAME");
     int length;
