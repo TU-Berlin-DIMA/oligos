@@ -63,8 +63,10 @@ import de.tu_berlin.dima.oligos.stat.Schema;
 import de.tu_berlin.dima.oligos.type.util.ColumnId;
 import de.tu_berlin.dima.oligos.type.util.Constraint;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
+import de.tu_berlin.dima.oligos.type.util.operator.AbstractOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.CharOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
+import de.tu_berlin.dima.oligos.type.util.operator.StringOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.DateOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.OracleDateOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.TimeOperator;
@@ -233,14 +235,15 @@ public class Oligos {
 	  		typeName.equals("varchar") || typeName.equals("nvarchar")) {
 	  		LOGGER.debug("column type is varchar2");
 	  		Parser<String> p = new StringParser();
-	  		//Operator<String> op = new 
+	  		//Operator<BigDecimal> op = new BigDecimalOperator();
+	  		Operator<String> op = new StringOperator();
 	    	ColumnConnector<String> connector = new OracleColumnConnector<String>(
 	    										jdbcConnector, schema, table, column, String.class, p, type);
 	    	Set<Constraint> constraints = connector.getConstraints();
 	    	if (constraints.contains(Constraint.UNIQUE) || constraints.contains(Constraint.PRIMARY_KEY))
 	    		throw new UnsupportedTypeException(typeName, Constraint.UNIQUE);
 	    	
-	    	profiler = new ColumnProfiler<String>(schema, table, column, type, isEnum, connector, null, p);
+	    	profiler = new ColumnProfiler<String>(schema, table, column, type, isEnum, connector, op, p);
 	    	System.out.println("varchar2 length is = " + type.getLength());
 	    	
 	  }
@@ -254,6 +257,9 @@ public class Oligos {
   
   public static void main(String[] args) throws TypeNotSupportedException {
   	BasicConfigurator.configure();
+  	/*new Test();
+  	System.exit(0);
+  */
   	// TODO create cmdline option for setting logger level 
     LOGGER.setLevel(Level.ALL);
   	CommandLineInterface cli = new CommandLineInterface(args);

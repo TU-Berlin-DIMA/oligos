@@ -22,11 +22,13 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.log4j.Logger;
 import org.apache.commons.dbutils.DbUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.ResultSetHandler;
@@ -39,6 +41,7 @@ import com.google.common.collect.Sets;
 import org.javatuples.Quartet;
 
 import de.tu_berlin.dima.oligos.Driver;
+import de.tu_berlin.dima.oligos.Oligos;
 import de.tu_berlin.dima.oligos.type.Types;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
@@ -53,6 +56,7 @@ public class JdbcConnector {
   
   private Connection connection;
   private DatabaseMetaData metaData;
+  private static final Logger LOGGER = Logger.getLogger(JdbcConnector.class);
   
   public JdbcConnector(final String hostname, final int port, final String database, final Driver dbDriver) {
     this.hostname = hostname;
@@ -67,10 +71,12 @@ public class JdbcConnector {
   }
 
   public void connect(final String user, final String pass) throws SQLException {
+  	LOGGER.debug("entering JdbcConnector:connect ..."); 
 	  String cs = getConnectionString();
 	  //DriverManager.setLogWriter( new PrintWriter(System.out) );
 	  connection = DriverManager.getConnection(cs, user, pass);
 	  metaData = connection.getMetaData();
+	  LOGGER.debug("leaving JdbcConnector:connect"); 
 	}
 
   public void close() throws SQLException {
@@ -89,17 +95,20 @@ public class JdbcConnector {
   }
 
   public Collection<String> getTables(final String schema) throws SQLException {
-    ResultSet result = metaData.getTables(null, schema, null, null);
+  	LOGGER.debug("entering JdbcConnector:getTables ..."); 
+	  ResultSet result = metaData.getTables(null, schema, null, null);
     List<String> tables = Lists.newArrayList();
     while (result.next()) {
       String table = result.getString("TABLE_NAME");
       tables.add(table);
     }
     DbUtils.close(result);
-    return tables;
+    LOGGER.debug("leaving JdbcConnector:getTables ..."); 
+	  return tables;
   }
 
   public Collection<String> getColumns(final String schema, final String table) throws SQLException {
+  	LOGGER.debug("entering JdbcConnector:getColumns ..."); 
     ResultSet result = metaData.getColumns(null, schema, table, null);
     List<String> columns = Lists.newArrayList();
     while (result.next()) {
@@ -107,11 +116,13 @@ public class JdbcConnector {
       columns.add(column);
     }
     DbUtils.close(result);
+    LOGGER.debug("leaving JdbcConnector:getColumns"); 
     return columns;
   }
   
   public Set<Quartet<String, String, String, String>> getReferences(final String schema) throws SQLException{
-	  Set<Quartet<String, String, String, String>> references = Sets.newHashSet();
+  	LOGGER.debug("entering JdbcConnector:getReferences ..."); 
+    Set<Quartet<String, String, String, String>> references = Sets.newHashSet();
 	  ResultSet result;
 	  List<String> tables = (List<String>) this.getTables(schema);
 	  for (String table: tables){
@@ -125,7 +136,8 @@ public class JdbcConnector {
 			  references.add(ri);
 		  }
 	  }
-	  return references;
+	  LOGGER.debug("leaving JdbcConnector:getReferences"); 
+    return references;
   }
 
   public boolean checkSchema(final String schema) throws SQLException {
@@ -170,17 +182,28 @@ public class JdbcConnector {
       final String query,
       final String columnName,
       final Object... parameters) throws SQLException {
+  	LOGGER.debug("entering JdbcConnector:scalarQuery ..."); 
+  	LOGGER.debug("query = " + query + "\nparameters = " + Arrays.toString(parameters) + ", queried column = " + columnName);
+    
     ResultSetHandler<T> handler = new ScalarHandler<T>(columnName);
     QueryRunner runner = new QueryRunner();
-    return runner.query(connection, query, handler, parameters);
+    T res = runner.query(connection, query, handler, parameters);
+    LOGGER.debug("leaving JdbcConnector:scalarQuery"); 
+    return res;
   }
   
-  // execute SQL commands with no return values
+  /*
+   *  Execute SQL commands with no return values, like registeration of 
+   *  procedures.
+   *  
+   *  @param 	query				the query string
+   *  @param 	parameters	optional parameters for the query string
+   *  @return void
+   */
   @SuppressWarnings({ "rawtypes", "unchecked" })
   public void execSQLCommand(
 	      final String query,
 	      final Object... parameters) throws SQLException {
-  	
   	ResultSetHandler handler = new ScalarHandler();
   	QueryRunner runner = new QueryRunner();
   	runner.query(connection, query, handler, parameters);	
@@ -224,9 +247,15 @@ public class JdbcConnector {
       final String valueColumnName,
       final Parser<T> parser,
       final Object...parameters) throws SQLException {
+  	LOGGER.debug("entering JdbcConnector:histogramQuery ...");
+  	LOGGER.trace("input args are queryStr = " + query + "\n\t keyColName = " +  
+  				keyColumnName + ", valueColName = " + valueColumnName + "\n\tparams = " + Arrays.toString(parameters));
   	ResultSetHandler<Map<T, Long>> handler = new HistogramHandler<T>(keyColumnName, valueColumnName, parser);
+  	LOGGER.trace("call QueryRunner constructor ...");
     QueryRunner runner = new QueryRunner();
+    LOGGER.trace("call QueryRunner.query ...");
     Map<T, Long> ret = runner.query(connection, query, handler, parameters);
+    LOGGER.debug("leaving JdbcConnector:histogramQuery");
     return ret;
   }
   

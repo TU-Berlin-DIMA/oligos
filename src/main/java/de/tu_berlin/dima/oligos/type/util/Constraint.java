@@ -16,6 +16,7 @@
 package de.tu_berlin.dima.oligos.type.util;
 
 public enum Constraint {
+	CHECK, 
   UNIQUE,
   PRIMARY_KEY,
   FOREIGN_KEY,

@@ -19,19 +19,69 @@ import java.sql.SQLException;
 import java.util.Set;
 
 import org.javatuples.Quartet;
+
 import de.tu_berlin.dima.oligos.db.JdbcConnector;
 import de.tu_berlin.dima.oligos.db.SchemaConnector;
 
+
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+
 public class OracleSchemaConnector implements SchemaConnector {
 
+	private final static String RAW2NUM_FUNC = 
+			"CREATE OR REPLACE FUNCTION raw2num(i_raw RAW) RETURN NUMBER " +
+			"as " +
+	    	"n NUMBER; " +
+	    "begin " +
+	    	"dbms_stats.convert_raw_value(i_raw, n); " +
+	    	"return n; " +
+	    "end;"; 
+	
+	private final static String RAW2DATE_FUNC = 
+			"CREATE OR REPLACE FUNCTION raw2date(i_raw RAW) RETURN DATE " +
+			"as " +
+	    	"n DATE; " +
+	    "begin " +
+	    	"dbms_stats.convert_raw_value(i_raw, n); " +
+	    	"return n; " +
+	    "end;"; 
+	
+	private final static String RAW2CHAR_FUNC = 
+			"CREATE OR REPLACE FUNCTION raw2char(i_raw RAW) RETURN VARCHAR2 " +
+			"as " +
+	    	"n VARCHAR2(1); " +
+	    "begin " +
+	    	"dbms_stats.convert_raw_value(i_raw, n); " +
+	    	"return n; " +
+	    "end;"; 
+
+	
 	private final JdbcConnector connector;
 	
+	private static final Logger LOGGER = Logger.getLogger(OracleSchemaConnector.class);
+	
 	 public OracleSchemaConnector(final JdbcConnector jdbcConnector) {
-		    this.connector = jdbcConnector;
+		 	this.connector = jdbcConnector;
+		  this.LOGGER.info("entering OracleSchemaConnector() ...");  
+		  try {	// register set of conversion functions 
+		  	LOGGER.debug("register raw2* functions ...");
+			  this.connector.execPreparedStmt(RAW2NUM_FUNC);
+			  this.connector.execPreparedStmt(RAW2DATE_FUNC);
+			  this.connector.execPreparedStmt(RAW2CHAR_FUNC);
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		  LOGGER.info("leaving OracleSchemaConnector");  
 	 }
 	
 	@Override
 	public Set<Quartet<String, String, String, String>> getReferences(String schema) throws SQLException {
 		return this.connector.getReferences(schema);
 	}
+	
+	
 }
