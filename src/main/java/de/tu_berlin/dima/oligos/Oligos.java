@@ -110,6 +110,7 @@ public class Oligos {
       throws SQLException {
   	
   	ColumnProfiler<?> profiler = null;
+  	LOGGER.trace("type = " + type.toString());
     String typeName = type.getTypeName().toLowerCase();
     boolean isEnum = metaConnector.isEnumerated(schema, table, column);
     if (typeName.equals("smallint")) {
@@ -241,10 +242,8 @@ public class Oligos {
 	    	Set<Constraint> constraints = connector.getConstraints();
 	    	if (constraints.contains(Constraint.UNIQUE) || constraints.contains(Constraint.PRIMARY_KEY))
 	    		throw new UnsupportedTypeException(typeName, Constraint.UNIQUE);
-	    	
-	    	profiler = new ColumnProfiler<String>(schema, table, column, type, isEnum, connector, op, p);
-	    	System.out.println("varchar2 length is = " + type.getLength());
-	    	
+	    	profiler = new PseudoColumnProfiler(schema, table, column, type, isEnum, connector);
+	    	//profiler = new ColumnProfiler<String>(schema, table, column, type, isEnum, connector, op, p);
 	  }
 	  else {
 	  	LOGGER.fatal("unsupported column type: " + typeName);
@@ -256,9 +255,7 @@ public class Oligos {
   
   public static void main(String[] args) throws TypeNotSupportedException {
   	BasicConfigurator.configure();
-  	/*new Test();
-  	System.exit(0);
-  */
+  
   	// TODO create cmdline option for setting logger level 
     LOGGER.setLevel(Level.ALL);
   	CommandLineInterface cli = new CommandLineInterface(args);
@@ -275,6 +272,7 @@ public class Oligos {
       Driver dbDriver = cli.dbDriver;
       switch (dbDriver.driverName){
 	  		case db2:
+	  			LOGGER.trace("metaConnector = Db2MetaConnector");
 	  			metaConnector = new Db2MetaConnector(jdbcConnector);
 	  			break;
 	  		case oracle:
@@ -282,8 +280,8 @@ public class Oligos {
 	  			break;
 	  		default:
 	  			LOGGER.error("Unknown database driver (see Driver.java for known drivers)");
-	  }
-    
+      }
+      
       // validating schema
       LOGGER.info("Validating input schema ...");
       SparseSchema sparseSchema = cli.getInputSchema();
@@ -295,9 +293,10 @@ public class Oligos {
       LOGGER.info("Retrieving column meta data ...");
       Map<ColumnId, TypeInfo> columnTypes = Maps.newLinkedHashMap();
       for (ColumnId columnId : inputSchema) {
-        TypeInfo type = metaConnector.getColumnType(columnId);
+      	TypeInfo type = metaConnector.getColumnType(columnId);
         columnTypes.put(columnId, type);
       }
+      
     	// creating connectors and profilers
       LOGGER.info("Establashing database connection ...");
       SchemaConnector schemaConnector = null;
@@ -306,6 +305,7 @@ public class Oligos {
       case db2:
     	   schemaConnector = new Db2SchemaConnector(jdbcConnector);
     	   tableConnector = new Db2TableConnector(jdbcConnector);
+    	   break;
       case oracle:
     	   schemaConnector = new OracleSchemaConnector(jdbcConnector);
     	   tableConnector = new OracleTableConnector(jdbcConnector);
@@ -328,7 +328,6 @@ public class Oligos {
                 break;
             case oracle:
                 columnProfiler = getProfilerOracle(schema, table, column, type, jdbcConnector, metaConnector);
-                break;
             }
             tableProfiler.addColumnProfiler(columnProfiler);
           }

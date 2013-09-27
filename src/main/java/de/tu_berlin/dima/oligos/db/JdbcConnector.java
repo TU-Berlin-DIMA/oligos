@@ -248,13 +248,9 @@ public class JdbcConnector {
       final String query,
       final String columnName,
       final Object... parameters) throws SQLException {
-  	LOGGER.debug("entering JdbcConnector:scalarQuery ..."); 
-  	LOGGER.debug("query = " + query + "\nparameters = " + Arrays.toString(parameters) + ", queried column = " + columnName);
-    
-    ResultSetHandler<T> handler = new ScalarHandler<T>(columnName);
+  	ResultSetHandler<T> handler = new ScalarHandler<T>(columnName);
     QueryRunner runner = new QueryRunner();
     T res = runner.query(connection, query, handler, parameters);
-    LOGGER.debug("leaving JdbcConnector:scalarQuery"); 
     return res;
   }
   
@@ -313,15 +309,9 @@ public class JdbcConnector {
       final String valueColumnName,
       final Parser<T> parser,
       final Object...parameters) throws SQLException {
-  	LOGGER.debug("entering JdbcConnector:histogramQuery ...");
-  	LOGGER.trace("input args are queryStr = " + query + "\n\t keyColName = " +  
-  				keyColumnName + ", valueColName = " + valueColumnName + "\n\tparams = " + Arrays.toString(parameters));
   	ResultSetHandler<Map<T, Long>> handler = new HistogramHandler<T>(keyColumnName, valueColumnName, parser);
-  	LOGGER.trace("call QueryRunner constructor ...");
-    QueryRunner runner = new QueryRunner();
-    LOGGER.trace("call QueryRunner.query ...");
+  	QueryRunner runner = new QueryRunner();
     Map<T, Long> ret = runner.query(connection, query, handler, parameters);
-    LOGGER.debug("leaving JdbcConnector:histogramQuery");
     return ret;
   }
   
@@ -329,7 +319,7 @@ public class JdbcConnector {
       final String schema,
       final String table,
       final String column) throws SQLException {
-    ResultSet result = metaData.getColumns(null, schema, table, column);
+  	ResultSet result = metaData.getColumns(null, schema, table, column);
     if (result.next()){
     String typeName = (String) result.getString("TYPE_NAME");
     int length;

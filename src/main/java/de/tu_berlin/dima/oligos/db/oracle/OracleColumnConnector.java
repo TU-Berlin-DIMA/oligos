@@ -21,8 +21,10 @@ import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import de.tu_berlin.dima.oligos.Oligos;
@@ -71,13 +73,21 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 			"num_nulls, num_distinct, nullable, data_type, data_length, data_scale " +
 			"FROM ALL_TAB_COLUMNS WHERE owner = ? AND table_name = ? AND column_name = ?";
 
-	private final static String MOST_FREQUENT_QUERY =
+	// TODO: does not work for strings
+	private final static String MOST_FREQUENT_QUERY_GENERIC =
 			"SELECT endpoint_value, endpoint_number - nvl(prev_number,0) frequency " +
 			"FROM (" + 
 			"SELECT endpoint_value, endpoint_number, lag(endpoint_number,1) over(order by endpoint_number) prev_number " +
 			"FROM USER_TAB_HISTOGRAMS " +
 			"WHERE table_name = ? AND column_name = ?" +
 			") " + 
+			"ORDER BY frequency DESC";
+	
+	private final static String MOST_FREQUENT_QUERY_STRING = 
+			"SELECT endpoint_actual_value as endpoint_value, endpoint_number - nvl(prev_number,0) frequency "+
+			"FROM (SELECT endpoint_actual_value, endpoint_number, lag(endpoint_number,1) over(order by endpoint_number) prev_number "+
+			"FROM USER_TAB_HISTOGRAMS "+
+			"WHERE table_name = ? AND column_name = ?) "+
 			"ORDER BY frequency DESC";
 			
 	private static String QUANTILE_HISTOGRAM_QUERY_DATE =
@@ -128,7 +138,10 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	private final String column;
 	private final Parser<T> parser;
 	private final Class columnType;
+	private final TypeInfo type;
 	private String QUANTILE_HISTOGRAM_QUERY;
+	private String MOST_FREQUENT_QUERY;
+	private boolean isEndpointActualValue = false; // indicates whether endpoint_actual_value in histogram view is filled
   private static final Logger LOGGER = Logger.getLogger(OracleColumnConnector.class);
 	
 	public OracleColumnConnector(final JdbcConnector jdbcConnector, final ColumnId columnId, final Parser<T> parser) {
@@ -150,18 +163,14 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	  this.column = column;
 	  this.parser = parser;
 	  this.columnType = columnType;
-	  if (this.columnType.equals(String.class))
-	  	this.RAW2STR_FUNC = this.RAW2STR_FUNC.replaceAll("<length>", Integer.toString(type.getLength()));
-		try {
-			this.connector.execPreparedStmt(RAW2STR_FUNC);
-		} catch (SQLException e) {
-			e.printStackTrace();
-			System.exit(-1);
-		}	
-		
+	  this.type = type;
+	  
+	
+	  
 	  
 	  // replace missing type information for appropriate conversion function call and histogram query
-	  setDomainQueryString();
+	  if (!setDomainQueryString())
+	  	;
 	  setHistogramQueryString();
 	  setGatherStatisticsString();
 	  
@@ -205,15 +214,21 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	 * @param 	void
 	 * @return  void
 	 */
-	private void setDomainQueryString(){
+	private boolean setDomainQueryString(){
 		if (this.columnType.equals(Date.class))
 	  	this.DOMAIN_QUERY = this.DOMAIN_QUERY.replaceAll("<T>", "date");
 	  else if (this.columnType.equals(BigDecimal.class))
 	  	this.DOMAIN_QUERY = this.DOMAIN_QUERY.replaceAll("<T>", "num");	
 	  else if (this.columnType.equals(String.class))
 	  	this.DOMAIN_QUERY = this.DOMAIN_QUERY.replaceAll("<T>", "str");
-	  else
-	  	throw new Error("Unknown column type");
+	  else if (this.columnType.equals(Character.class))
+	  	this.DOMAIN_QUERY = this.DOMAIN_QUERY.replaceAll("<T>", "str");
+	  else{
+	  	LOGGER.error("Unsupported column type: " + this.columnType.toString() + " for column '" + this.column + "' in table '" + this.table +"'");
+//	  	throw new Error("Unknown column type: " + this.columnType.toString());
+	  	return false;
+	  }
+		return true;
 	}
 	
 	/**
@@ -231,14 +246,19 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	  else if (this.columnType.equals(String.class)){
 	  	try {// if endpoint_actual_value present, read it out (return type is string)
 				T res = this.connector.scalarQuery(this.ENDPOINT_ACTUAL_VALUE, "colvalue", this.table, this.column);
-				this.QUANTILE_HISTOGRAM_QUERY = (res != null)? OracleColumnConnector.QUANTILE_HISTOGRAM_QUERY_STRING : OracleColumnConnector.QUANTILE_HISTOGRAM_QUERY_NUMBER; 
+				if (res != null)
+					this.isEndpointActualValue = true;
+				this.QUANTILE_HISTOGRAM_QUERY = (this.isEndpointActualValue)? OracleColumnConnector.QUANTILE_HISTOGRAM_QUERY_STRING : OracleColumnConnector.QUANTILE_HISTOGRAM_QUERY_NUMBER; 
 			} catch (SQLException e) {
 				e.printStackTrace();
 				System.exit(-1);
 			}
 	  }
+	  else if (this.columnType.equals(Character.class))
+	  	this.QUANTILE_HISTOGRAM_QUERY = OracleColumnConnector.QUANTILE_HISTOGRAM_QUERY_NUMBER;
 	  else
 	  	throw new Error("Unknown column type");
+		this.MOST_FREQUENT_QUERY = (this.isEndpointActualValue) ? OracleColumnConnector.MOST_FREQUENT_QUERY_STRING : OracleColumnConnector.MOST_FREQUENT_QUERY_GENERIC;
 		this.QUANTILE_HISTOGRAM_QUERY = this.QUANTILE_HISTOGRAM_QUERY.replaceAll("<table>", this.table).replaceAll("<column>", this.column);
 	}
 	
@@ -273,6 +293,7 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	@Override
 	public long getNumNulls() throws SQLException {
 		LOGGER.debug("entering OracleColumnConnector:getNumNulls ...");
+		register_raw2str_func();
 		long ret = this.connector.<BigDecimal>scalarQuery(DOMAIN_QUERY, "num_nulls", this.schema, this.table, this.column).longValue();
 		LOGGER.debug("leaving OracleColumnConnector:getNumNulls");
 		return ret;
@@ -281,14 +302,18 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	@Override
 	public long getCardinality() throws SQLException {
 		LOGGER.debug("entering OracleColumnConnector:getCardinality ...");
+		register_raw2str_func();
 		long ret = this.connector.<BigDecimal>scalarQuery(DOMAIN_QUERY, "num_distinct", this.schema, this.table, this.column).longValue();
 		LOGGER.debug("leaving OracleColumnConnector:getCardinality");
 		return ret;
 	}
-	 
+
+	// TODO convert if columnType is String and query returns number
 	@Override
 	public T getMin() throws SQLException {
 		LOGGER.debug("entering OracleColumnConnector:getMin ...");
+		LOGGER.debug("column = " + this.column);
+		register_raw2str_func();
 		T minT = this.connector.scalarQuery(this.DOMAIN_QUERY, "low_value", this.schema, this.table, this.column);
 		if (this.columnType.equals(String.class))
 			minT = this.parser.fromString(((String) minT).replaceAll("'", ""));
@@ -296,9 +321,11 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 		return (T) minT; //this.parser.fromString(minStr);
 	}
 
+	// TODO convert if columnType is String and query returns number
 	@Override
 	public T getMax() throws SQLException {
 		LOGGER.debug("entering OracleColumnConnector:getMin ...");
+		register_raw2str_func();
 		T maxT = this.connector.scalarQuery(this.DOMAIN_QUERY, "high_value", this.schema, this.table, this.column);
 		LOGGER.debug("leaving OracleColumnConnector:getMax");
 		return (T) maxT;
@@ -307,7 +334,15 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	@Override
 	public Map<T, Long> getMostFrequentValues() throws SQLException {
 		LOGGER.debug("entering OracleColumnConnector:getMostFreqVals ...");
-		Map<T, Long> ret = this.connector.histogramQuery(MOST_FREQUENT_QUERY, "endpoint_value", "frequency", this.parser, this.table, this.column);
+		Map<T, Long> ret = this.connector.histogramQuery(this.MOST_FREQUENT_QUERY, "endpoint_value", "frequency", this.parser, this.table, this.column);
+		// convert keys into strings if endpoint_actual_value was empty  
+		if (!this.isEndpointActualValue && this.columnType.equals(String.class)){
+			Map<String, Long> ret_new = Maps.newLinkedHashMap();
+			for (Map.Entry<T, Long> entry: ret.entrySet()){
+				ret_new.put(oraNum2String(new BigDecimal((String)entry.getKey())), entry.getValue());
+			}
+			return (Map<T, Long>) ret_new;
+		}
 		LOGGER.debug("leaving OracleColumnConnector:getMostFreqVals");
 		return ret;
 	}
@@ -316,12 +351,69 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	public Map<T, Long> getHistogram() throws SQLException {
 		LOGGER.debug("entering OracleColumnConnector:getHistogram ...");
 		Map<T, Long> ret = this.connector.histogramQuery(QUANTILE_HISTOGRAM_QUERY, "colvalue", "cdf", this.parser, this.table, this.column );
+		
 		// test whether output has to be converted
-		if (this.columnType.equals(String.class) && this.QUANTILE_HISTOGRAM_QUERY.equals(OracleColumnConnector.QUANTILE_HISTOGRAM_QUERY_NUMBER)){
-			
+		if (!this.isEndpointActualValue && this.columnType.equals(String.class) || this.columnType.equals(Character.class))
+		{
+			Map<String, Long> ret_new = Maps.newLinkedHashMap();
+			for (Map.Entry<T, Long> entry: ret.entrySet()){
+				ret_new.put(oraNum2String(new BigDecimal((String)entry.getKey())), entry.getValue());
+		//		System.out.println("ret_new[" + oraNum2String(new BigDecimal((String)entry.getKey())) + "] = " + entry.getValue());
+			}
+			return (Map<T, Long>) ret_new;
 		}
+		//for (Map.Entry<T, Long> entry :ret.entrySet())
+		//	System.out.println("hist[" + entry.getKey().toString() + "] = " + entry.getValue().toString());
+		
 		LOGGER.debug("leaving OracleColumnConnector:getHistogram");
 		return ret;
+	}
+	/**
+	 * Converts Oracle's numerical endpoint_values for strings back into a string. Note, that only the first 6 Bytes are recovered. 
+	 * Missing trailing characters are filled with blanks. 
+	 * @param e 	Oracle's bin value representing a string
+	 * @return 		recovered string
+	 */
+	private String oraNum2String(BigDecimal val){
+		char s[] = new char[this.type.getLength()];
+		int nl;
+		BigDecimal divisor;
+		BigDecimal C256 = BigDecimal.valueOf(256);
+		int exactDigits = 6; 
+		// compute all reconstructable characters
+		for (int i = 1; i <= Math.min(exactDigits, this.type.getLength()); i++){
+			divisor = C256.pow(15-i);
+			nl = val.divide(divisor).intValue();
+			if (nl == 0){
+				exactDigits = i-1;
+				break;
+			}
+			val = val.subtract((new BigDecimal(nl)).multiply(divisor));
+			s[i-1] = (char) nl;
+		}
+		// pad rest with blanks
+		for (int i = exactDigits; i < this.type.getLength(); i++)
+			s[i] = (char) 32;
+		return new String(s);
+	}
+	
+	/**
+	 * Register right before usage raw2str conversion function with appropriate buffer size to avoid PL/SQL buffer size errors.
+	 */
+	private void register_raw2str_func(){
+	  if (this.columnType.equals(String.class) || this.columnType.equals(Character.class)){
+	  	if (this.columnType.equals(String.class))
+	  		this.RAW2STR_FUNC = this.RAW2STR_FUNC.replaceAll("<length>", Integer.toString(type.getLength()));
+	  	else if (this.columnType.equals(Character.class))
+	  		this.RAW2STR_FUNC = this.RAW2STR_FUNC.replaceAll("<length>", Integer.toString(1));
+	  	try {
+	  		//System.out.println("exec raw2str_func = " + this.RAW2STR_FUNC);
+	  		this.connector.execPreparedStmt(RAW2STR_FUNC);
+	  	} catch (SQLException e) {
+	  		e.printStackTrace();
+	  		System.exit(-1);
+	  	}		
+	  }
 	}
 
 }

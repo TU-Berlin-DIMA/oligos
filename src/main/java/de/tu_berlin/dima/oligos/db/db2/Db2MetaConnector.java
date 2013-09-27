@@ -121,7 +121,7 @@ public class Db2MetaConnector implements MetaConnector {
   @Override
   public TypeInfo getColumnType(final String schema, final String table, final String column)
       throws SQLException {
-    return connector.typeQuery(TYPE_QUERY, schema, table);
+  	return connector.typeQuery(schema, table, column);
   }
 
 }

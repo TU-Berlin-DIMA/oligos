@@ -16,15 +16,16 @@
 package de.tu_berlin.dima.oligos.profiler;
 
 import java.sql.SQLException;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
 
-import de.tu_berlin.dima.oligos.Oligos;
 import de.tu_berlin.dima.oligos.db.ColumnConnector;
 import de.tu_berlin.dima.oligos.stat.Column;
+import de.tu_berlin.dima.oligos.stat.distribution.histogram.Bucket;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.CustomHistogram;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.Histogram;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.QuantileHistogram;
@@ -43,7 +44,6 @@ public class ColumnProfiler<T> implements Profiler<Column<T>> {
   protected final boolean isEnum;
   protected final Operator<T> operator;
   protected final Parser<T> parser;
-	private static final Logger LOGGER = Logger.getLogger(ColumnProfiler.class);
 
   public ColumnProfiler(final String schema, final String table, final String column
       , final TypeInfo type, final boolean isEnum, final ColumnConnector<T> connector
@@ -59,14 +59,9 @@ public class ColumnProfiler<T> implements Profiler<Column<T>> {
   }
 
   private T getMin(T low, Set<T> colvalues) {
-  	LOGGER.debug("entering ColumnProfiler:getMin ...");
   	T min = low;
-  	LOGGER.debug("input value min " + low.toString());
-    for (T val : colvalues) {
-    	LOGGER.debug("current value is " + val.toString() + ", former min is " + min.toString() + ", operator is " + operator.toString());
-      min = operator.min(min, val);
-    }
-    LOGGER.debug("leaving ColumnProfiler:getMin");
+  	for (T val : colvalues) 
+  		min = operator.min(min, val);
     return min;
   }
 
