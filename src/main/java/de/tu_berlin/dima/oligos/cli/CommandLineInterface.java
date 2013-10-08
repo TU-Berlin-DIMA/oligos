@@ -17,7 +17,6 @@ package de.tu_berlin.dima.oligos.cli;
 
 import java.io.File;
 
-import org.apache.log4j.Logger;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -29,7 +28,6 @@ import org.apache.commons.lang3.StringUtils;
 import de.tu_berlin.dima.oligos.Driver;
 import de.tu_berlin.dima.oligos.Oligos;
 import de.tu_berlin.dima.oligos.SparseSchema;
-import de.tu_berlin.dima.oligos.db.JdbcConnector;
 
 public class CommandLineInterface {
 
@@ -62,7 +60,6 @@ public class CommandLineInterface {
   private String generatorName;
   private SparseSchema inputSchema;
   public Driver dbDriver;
-	private static final Logger LOGGER = Logger.getLogger(CommandLineInterface.class);
 	 
   public CommandLineInterface(String[] args) {
     this.inputString = args;

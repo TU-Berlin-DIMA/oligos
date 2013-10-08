@@ -24,10 +24,6 @@ import de.tu_berlin.dima.oligos.db.JdbcConnector;
 import de.tu_berlin.dima.oligos.db.SchemaConnector;
 
 
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 public class OracleSchemaConnector implements SchemaConnector {
@@ -66,7 +62,7 @@ public class OracleSchemaConnector implements SchemaConnector {
 	
 	 public OracleSchemaConnector(final JdbcConnector jdbcConnector) {
 		 	this.connector = jdbcConnector;
-		  this.LOGGER.info("entering OracleSchemaConnector() ...");  
+		  LOGGER.info("entering OracleSchemaConnector() ...");  
 		  try {	// register set of conversion functions 
 		  	LOGGER.debug("register raw2* functions ...");
 			  this.connector.execPreparedStmt(RAW2NUM_FUNC);

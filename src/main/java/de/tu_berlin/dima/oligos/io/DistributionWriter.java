@@ -88,7 +88,6 @@ public class DistributionWriter implements Writer {
       double probability = exactBucket.getFrequency() / (double) numTotal;
       String value = column.asString(exactBucket.getLowerBound());
       if (isEnum) {
-      	int i = index+1;
       	strBld.append(getExactEntry(probability, value, index++));
       } else {
         if (QUOTED_TYPE.contains(type)) {

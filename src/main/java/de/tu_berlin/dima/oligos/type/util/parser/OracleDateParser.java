@@ -22,10 +22,6 @@ import java.text.SimpleDateFormat;
 
 import org.apache.log4j.Logger;
 
-import de.tu_berlin.dima.oligos.Oligos;
-import oracle.sql.DATE;
-import oracle.sql.converter.*;
-
 public class OracleDateParser extends AbstractParser<oracle.sql.DATE> {
   
   private final static String DEFAULT_OUTPUT_FORMAT = "yyyy-mm-dd hh:mm:ss"; //"yyyy/mm/dd:hh:mi:ssam";
