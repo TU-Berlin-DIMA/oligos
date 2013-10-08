@@ -15,14 +15,11 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.db;
 
-import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +36,6 @@ import org.apache.commons.dbutils.handlers.ScalarHandler;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.javatuples.Quartet;
-import de.tu_berlin.dima.oligos.Driver;
 import de.tu_berlin.dima.oligos.db.constraints.ForeignKey;
 import de.tu_berlin.dima.oligos.db.handler.jdbc.ForeignKeysHandler;
 import de.tu_berlin.dima.oligos.db.handler.meta.ColumnRefsHandler;
@@ -78,40 +74,6 @@ public class JdbcConnector {
   public JdbcConnector(final Connection connection) throws SQLException {
     this.connection = connection;
     this.metaData = connection.getMetaData();
-  }
-  
-  private Connection connection;
-  private DatabaseMetaData metaData;
-  private static final Logger LOGGER = Logger.getLogger(JdbcConnector.class);
-  
-  public JdbcConnector(final String hostname, final int port, final String database, final Driver dbDriver) {
-    this.hostname = hostname;
-    this.port = port;
-    this.database = database;
-    this.dbDriver = dbDriver;
-    this.metaData = null;
-  }
-
-  @Deprecated
-  private String getConnectionString(
-      final Driver dbDriver,
-      final String hostname,
-      final int port,
-      final String database) {
-	  return String.format(dbDriver.JDBC_STRING, dbDriver.driverName, hostname, port, database);
-  }
-
-  public void connect(final String user, final String pass) throws SQLException {
-  	LOGGER.debug("entering JdbcConnector:connect ..."); 
-	  String cs = getConnectionString();
-	  //DriverManager.setLogWriter( new PrintWriter(System.out) );
-	  connection = DriverManager.getConnection(cs, user, pass);
-	  metaData = connection.getMetaData();
-	  LOGGER.debug("leaving JdbcConnector:connect"); 
-	}
-
-  public void close() throws SQLException {
-	  connection.close();
   }
 
   /******************************************************************************

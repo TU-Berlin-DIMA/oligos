@@ -24,7 +24,6 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -34,8 +33,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-
-import oracle.sql.DATE;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -66,12 +63,10 @@ import de.tu_berlin.dima.oligos.stat.Schema;
 import de.tu_berlin.dima.oligos.type.util.ColumnId;
 import de.tu_berlin.dima.oligos.type.util.Constraint;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
-import de.tu_berlin.dima.oligos.type.util.operator.AbstractOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.CharOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 import de.tu_berlin.dima.oligos.type.util.operator.StringOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.DateOperator;
-import de.tu_berlin.dima.oligos.type.util.operator.date.OracleDateOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.TimeOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.TimestampOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.BigDecimalOperator;
@@ -359,7 +354,7 @@ public class Oligos {
         writer.write();
       }
       LOGGER.debug("Close JdbcConnector ...");
-      jdbcConnector.close();
+      connection.close();
     } catch (SQLException e) {
       LOGGER.error(e.getLocalizedMessage());
       LOGGER.debug(ExceptionUtils.getStackTrace(e));
