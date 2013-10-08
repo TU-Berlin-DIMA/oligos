@@ -22,8 +22,12 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.annotation.Nullable;
+
 import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.log4j.Logger;
+
+import com.google.common.base.Predicate;
 
 import de.tu_berlin.dima.oligos.db.constraints.ForeignKey;
 import de.tu_berlin.dima.oligos.db.reference.ColumnRef;
@@ -44,7 +48,22 @@ public class ForeignKeysHandler implements ResultSetHandler<Set<ForeignKey>> {
   
   private static final Logger LOGGER = Logger.getLogger(ForeignKeysHandler.class);
 
+  private final Predicate<ResultSet> predicate;
+
   private boolean isPart;
+
+  public ForeignKeysHandler() {
+    this.predicate = new Predicate<ResultSet>() {
+      @Override
+      public boolean apply(@Nullable ResultSet input) {
+        return true;
+      }
+    };
+  }
+
+  public ForeignKeysHandler(final Predicate<ResultSet> predicate) {
+    this.predicate = predicate;
+  }
   
   /**
    * Converts the given <code>ResultSet</code> into a <code>Set</code> of
@@ -67,7 +86,7 @@ public class ForeignKeysHandler implements ResultSetHandler<Set<ForeignKey>> {
     Set<ForeignKey> foreignKeys = new HashSet<ForeignKey>();
     ForeignKey last = null;
     ForeignKey current = null;
-    while (rs.next()) {
+    while (rs.next() && predicate.apply(rs)) {
       current = handleRow(rs);
       if (isPart) {
         Collection<ColumnRef> childCols = current.getChildColumns();
