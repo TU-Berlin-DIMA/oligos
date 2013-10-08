@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import de.tu_berlin.dima.oligos.db.reference.ColumnRef;
@@ -151,6 +152,28 @@ public class ForeignKey extends AbstractConstraint {
       colRefs.add(new ColumnRef(table, col));
     }
     return colRefs;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(parent, parentColumns, child, childColumns);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    } else if (obj == null) {
+      return false;
+    } else if (obj instanceof ForeignKey){
+      ForeignKey other = (ForeignKey) obj;
+      return parent.equals(other.parent) &&
+          parentColumns.equals(other.parentColumns) &&
+          child.equals(other.child) &&
+          childColumns.equals(other.childColumns);
+    } else {
+      return false;
+    }
   }
 
   @Override
