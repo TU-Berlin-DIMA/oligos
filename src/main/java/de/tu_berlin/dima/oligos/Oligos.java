@@ -18,12 +18,15 @@ package de.tu_berlin.dima.oligos;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.sql.Connection;
 import java.sql.Date;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import org.apache.commons.cli.ParseException;
@@ -253,8 +256,14 @@ public class Oligos {
         System.exit(2);
       }
       
-      JdbcConnector jdbcConnector = cli.getJdbcConnector();
-      jdbcConnector.connect(cli.getUsername(), cli.getPassword());
+      Properties props = new Properties();
+      props.setProperty("user", cli.getUsername());
+      props.setProperty("password", cli.getPassword());      
+      Connection connection = DriverManager.getConnection(
+          cli.getConnectionString(), props);
+      JdbcConnector jdbcConnector = new JdbcConnector(connection);
+//      JdbcConnector jdbcConnector = cli.getJdbcConnector();
+//      jdbcConnector.connect(cli.getUsername(), cli.getPassword());
       MetaConnector metaConnector = null;
       Driver dbDriver = cli.dbDriver;
       switch (dbDriver.driverName){

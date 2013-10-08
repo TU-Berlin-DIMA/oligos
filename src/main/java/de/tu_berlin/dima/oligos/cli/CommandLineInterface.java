@@ -51,7 +51,10 @@ public class CommandLineInterface {
   private final HelpFormatter helpFormatter;
   private CommandLine commandLine;
 
-  private JdbcConnector jdbcConnector;
+  //private JdbcConnector jdbcConnector;
+  private String hostname;
+  private int port;
+  private String database;
   private String username;
   private String password;
   private File outputDirectory;
@@ -70,14 +73,14 @@ public class CommandLineInterface {
     commandLine = parser.parse(OPTS, inputString);
     if (checkOptions(commandLine, helpFormatter)) {
       // get database credentials
-      String hostname = commandLine.getOptionValue("hostname");
-      int port = Integer.parseInt(commandLine.getOptionValue("port"));
-      String database = commandLine.getOptionValue("database");
+      this.hostname = commandLine.getOptionValue("hostname");
+      this.port = Integer.parseInt(commandLine.getOptionValue("port"));
+      this.database = commandLine.getOptionValue("database");
       // use DB2_JDBC or Oracle_JDBC driver
       this.dbDriver = new Driver(commandLine.getOptionValue("jdbc"));
       this.username = commandLine.getOptionValue("username");
       this.password = commandLine.getOptionValue("password");
-      this.jdbcConnector = new JdbcConnector(hostname, port, database, dbDriver);
+      //this.jdbcConnector = new JdbcConnector(hostname, port, database, dbDriver);
       // get output information
       this.outputDirectory = new File(commandLine.getOptionValue("output"));
       this.generatorName = commandLine.getOptionValue("generator");
@@ -90,8 +93,24 @@ public class CommandLineInterface {
     }
   }
 
-  public JdbcConnector getJdbcConnector() {
-    return jdbcConnector;
+//  public JdbcConnector getJdbcConnector() {
+//    return jdbcConnector;
+//  }
+
+  public String getHostname() {
+    return hostname;
+  }
+
+  public int getPort() {
+    return port;
+  }
+
+  public String getDatabase() {
+    return database;
+  }
+
+  public String getConnectionString() {
+    return dbDriver.JDBC_STRING;
   }
 
   public String getUsername() {
