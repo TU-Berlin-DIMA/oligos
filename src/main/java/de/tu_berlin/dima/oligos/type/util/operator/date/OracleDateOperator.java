@@ -15,13 +15,24 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.type.util.operator.date;
 
+import de.tu_berlin.dima.oligos.Oligos;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
-import java.sql.*;
+import org.apache.log4j.Logger;
+
+import java.sql.SQLException;
+import java.sql.Timestamp;
+//import java.sql.*;
 
 // TODO test operator functions
 public class OracleDateOperator implements Operator<oracle.sql.DATE> {
 
+  private static final Logger LOGGER = Logger.getLogger(OracleDateOperator.class);
+	
+  
+  public OracleDateOperator(){
+  	LOGGER.warn("deprecated: use java.sql.Timestamp type and operator instead");
+  }
 	@Override
 	public int compare(oracle.sql.DATE arg0, oracle.sql.DATE arg1) {
 		return arg0.compareTo(arg1);
@@ -48,10 +59,7 @@ public class OracleDateOperator implements Operator<oracle.sql.DATE> {
 	@Override
 	// TODO check semantics of diff computation
 	public long range(oracle.sql.DATE val1, oracle.sql.DATE val2) throws SQLException {
-		System.out.println("d1 = " + val1.toString());
-		System.out.println("d1.int = " + val1.longValue());
-		
-		Time t1 = val1.timeValue();
+		//Time t1 = val1.timeValue();
 		//t1.getDay()
 		long diff = val2.longValue() - val1.longValue();
     long days = (diff / (1000 * 60 * 60 * 24));
@@ -60,10 +68,22 @@ public class OracleDateOperator implements Operator<oracle.sql.DATE> {
 
 	@Override
 	public oracle.sql.DATE min(oracle.sql.DATE val1, oracle.sql.DATE val2) {
+		LOGGER.trace("entering OracleDateOperator:min(oracle.sql.DATE, oracle.sql.DATE)");
 		if (val1.compareTo(val2) <= 0)
 			return val1;
 		return val2;
 	}
+	
+	/*
+	public oracle.sql.DATE min(java.sql.Timestamp val1, oracle.sql.DATE val2) {
+		if (this.LOGGER != null) this.LOGGER.trace("entering OracleDateOperator:min(java.sql.Timestamp, oracle.sql.DATE)");
+		oracle.sql.DATE val1_DATE = new oracle.sql.DATE(val1.toString().substring(0, 19));
+		if (this.LOGGER != null) this.LOGGER.trace("casted timestamp value = " + val1.toString() +" to oracle.date = " + val1_DATE.toString());
+		if (val1_DATE.compareTo(val2) <= 0)
+			return val1_DATE;
+		return val2;
+	}*/
+	
 
 	@Override
 	public oracle.sql.DATE max(oracle.sql.DATE val1, oracle.sql.DATE val2) {

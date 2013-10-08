@@ -15,17 +15,20 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.db;
 
+import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.log4j.Logger;
 import org.apache.commons.dbutils.DbUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.ResultSetHandler;
@@ -77,24 +80,16 @@ public class JdbcConnector {
     this.metaData = connection.getMetaData();
   }
   
-  /**
-   * @deprecated As of , replaced by {@link #JdbcConnector(Connection)}
-   * @param hostname
-   * @param port
-   * @param database
-   * @param dbDriver
-   */
-  @Deprecated
-  public JdbcConnector(
-      final String hostname,
-      final int port,
-      final String database,
-      final Driver dbDriver,
-      final String username,
-      final String password) throws SQLException {
-    String connectionString = getConnectionString(dbDriver, hostname, port, database);
-    this.connection = DriverManager.getConnection(connectionString, username, password);
-    this.metaData = this.connection.getMetaData();
+  private Connection connection;
+  private DatabaseMetaData metaData;
+  private static final Logger LOGGER = Logger.getLogger(JdbcConnector.class);
+  
+  public JdbcConnector(final String hostname, final int port, final String database, final Driver dbDriver) {
+    this.hostname = hostname;
+    this.port = port;
+    this.database = database;
+    this.dbDriver = dbDriver;
+    this.metaData = null;
   }
 
   @Deprecated
@@ -105,6 +100,15 @@ public class JdbcConnector {
       final String database) {
 	  return String.format(dbDriver.JDBC_STRING, dbDriver.driverName, hostname, port, database);
   }
+
+  public void connect(final String user, final String pass) throws SQLException {
+  	LOGGER.debug("entering JdbcConnector:connect ..."); 
+	  String cs = getConnectionString();
+	  //DriverManager.setLogWriter( new PrintWriter(System.out) );
+	  connection = DriverManager.getConnection(cs, user, pass);
+	  metaData = connection.getMetaData();
+	  LOGGER.debug("leaving JdbcConnector:connect"); 
+	}
 
   public void close() throws SQLException {
 	  connection.close();
@@ -570,12 +574,18 @@ public class JdbcConnector {
     return runner.query(connection, query, handler, parameters);
   }
   
-  // execute SQL commands with no return values
+  /*
+   *  Execute SQL commands with no return values, like registeration of 
+   *  procedures.
+   *  
+   *  @param 	query				the query string
+   *  @param 	parameters	optional parameters for the query string
+   *  @return void
+   */
   @SuppressWarnings({ "rawtypes", "unchecked" })
   public void execSQLCommand(
 	      final String query,
 	      final Object... parameters) throws SQLException {
-  	
   	ResultSetHandler handler = new ScalarHandler();
   	QueryRunner runner = new QueryRunner();
   	runner.query(connection, query, handler, parameters);	
@@ -590,7 +600,7 @@ public class JdbcConnector {
   		for (int i = 1; i <= parameters.length; i++) {
   	    ps.setString(i, (String) parameters[i-1]);
       }
-  		int res = ps.executeUpdate(); // void sql query
+  		ps.executeUpdate();
   		connection.commit();
   		
   	}

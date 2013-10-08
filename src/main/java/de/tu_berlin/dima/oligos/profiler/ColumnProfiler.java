@@ -16,12 +16,16 @@
 package de.tu_berlin.dima.oligos.profiler;
 
 import java.sql.SQLException;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.apache.log4j.Logger;
+
 import de.tu_berlin.dima.oligos.db.ColumnConnector;
 import de.tu_berlin.dima.oligos.stat.Column;
+import de.tu_berlin.dima.oligos.stat.distribution.histogram.Bucket;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.CustomHistogram;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.Histogram;
 import de.tu_berlin.dima.oligos.stat.distribution.histogram.QuantileHistogram;
@@ -54,17 +58,17 @@ public class ColumnProfiler<T> implements Profiler<Column<T>> {
     this.parser = parser;
   }
 
-  private T getMin(T low2key, Set<T> colvalues) {
-    T min = low2key;
-    for (T val : colvalues) {
-      min = operator.min(min, val);
-    }
+  private T getMin(T low, Set<T> colvalues) {
+  	T min = low;
+  	for (T val : colvalues) 
+  		min = operator.min(min, val);
     return min;
   }
 
   public QuantileHistogram<T> getQuantileHistogram() {
     try {
     	Map<T, Long> rawHist = connector.getHistogram();
+    
       T min = getMin(connector.getMin(), rawHist.keySet());
       QuantileHistogram<T> histogram = new QuantileHistogram<T>(min, operator);
       for (Entry<T, Long> entry : rawHist.entrySet()) {

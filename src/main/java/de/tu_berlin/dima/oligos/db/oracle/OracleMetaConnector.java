@@ -27,16 +27,6 @@ import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 
 public class OracleMetaConnector implements MetaConnector {
 	
-	private final static String DBMS_STATS_GATHER = 
-			"begin dbms_stats.gather_table_stats(" +
-					"ownname      => ?, " +
-					"tabname      => ?, " + 
-					"estimate_percent => 100, " + 
-					"method_opt   => 'for columns ?' " +
-					"); " +
-			"end; " +
-			"/";
-	
 	private final static String ENUMERATED_QUERY = 
 			"SELECT num_most_frequent, atc.num_distinct " +
 			"FROM (SELECT COUNT(*) as num_most_frequent " +
@@ -126,7 +116,9 @@ public class OracleMetaConnector implements MetaConnector {
 
 	@Override
 	public TypeInfo getColumnType(String schema, String table, String column) throws SQLException {
-		return connector.typeQuery(TYPE_QUERY, schema, table, column);
+		return connector.typeQuery(schema, table, column);
+			//return connector.typeQuery(TYPE_QUERY, schema, table, column);
+	
 	}
 
 }

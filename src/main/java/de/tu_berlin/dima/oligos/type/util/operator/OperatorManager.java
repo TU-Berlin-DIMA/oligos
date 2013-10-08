@@ -78,6 +78,7 @@ public final class OperatorManager {
     putOperator(Character.class, new CharOperator());
     putOperator(Double.class, new DoubleOperator());
     putOperator(Float.class, new FloatOperator());
+    putOperator(String.class, new StringOperator());
   }
 
 }

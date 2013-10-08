@@ -21,6 +21,8 @@ import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.log4j.Logger;
+
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 
@@ -31,6 +33,8 @@ import de.tu_berlin.dima.oligos.type.util.operator.Operators;
 
 public class DistributionWriter implements Writer {
 
+  private static final Logger LOGGER = Logger.getLogger(DistributionWriter.class);
+	
   @SuppressWarnings("serial")
   private final static Set<Class<?>> QUOTED_TYPE = new HashSet<Class<?>>() {{
     add(Character.class);
@@ -65,6 +69,7 @@ public class DistributionWriter implements Writer {
   }
 
   public String getDistributionString() throws SQLException {
+  	LOGGER.debug("entering DistributionWriter:getDistributionString ...");
     Class<?> type = column.getTypeInfo().getType();
     StringBuilder strBld = new StringBuilder();
     boolean isEnum = column.isEnumerated();
@@ -83,7 +88,8 @@ public class DistributionWriter implements Writer {
       double probability = exactBucket.getFrequency() / (double) numTotal;
       String value = column.asString(exactBucket.getLowerBound());
       if (isEnum) {
-        strBld.append(getExactEntry(probability, value, index++));
+      	int i = index+1;
+      	strBld.append(getExactEntry(probability, value, index++));
       } else {
         if (QUOTED_TYPE.contains(type)) {
           value = "\'" + value + "\'";
@@ -104,6 +110,7 @@ public class DistributionWriter implements Writer {
         strBld.append('\n');
       }
     }
+    LOGGER.debug("leaving DistributionWriter:getDistributionString");
     return strBld.toString();
   }
 

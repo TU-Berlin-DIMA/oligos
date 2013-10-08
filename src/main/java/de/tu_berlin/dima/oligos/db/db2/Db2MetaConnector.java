@@ -44,6 +44,11 @@ public class Db2MetaConnector implements MetaConnector {
       "FROM   SYSCAT.COLUMNS " +
       "WHERE  tabschema = ? AND tabname = ? AND colname = ?";
 
+  private final static String TYPE_QUERY =
+      "SELECT typename, length, scale " +
+      "FROM   SYSCAT.COLUMNS " +
+      "WHERE  tabschema = ? AND tabname = ? AND colname = ?";
+
   private final JdbcConnector connector;
 
   public Db2MetaConnector(final JdbcConnector jdbcConnector) {
@@ -116,7 +121,7 @@ public class Db2MetaConnector implements MetaConnector {
   @Override
   public TypeInfo getColumnType(final String schema, final String table, final String column)
       throws SQLException {
-    return connector.typeQuery(schema, table, column);
+  	return connector.typeQuery(schema, table, column);
   }
 
 }

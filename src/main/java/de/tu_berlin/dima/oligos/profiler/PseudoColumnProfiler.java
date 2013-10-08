@@ -52,6 +52,7 @@ public class PseudoColumnProfiler extends ColumnProfiler<String>  {
       for (Entry<String, Long> e : mostFrequentValues.entrySet()) {
         exactValues.put(e.getKey(), e.getValue());
       }
+      
       if (!isEnum) {
         for (Entry<String, Long> e : quantileHistogram.entrySet()) {
           String key = e.getKey();

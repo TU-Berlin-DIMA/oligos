@@ -26,9 +26,12 @@ import de.tu_berlin.dima.oligos.DenseSchema;
 import de.tu_berlin.dima.oligos.SparseSchema;
 import de.tu_berlin.dima.oligos.type.util.ColumnId;
 
+
 public class DbUtils {
 
-  public static DenseSchema sparseToDenseSchema(SparseSchema sparseSchema,
+	private static final Logger LOGGER = Logger.getLogger(DbUtils.class);
+  
+	public static DenseSchema sparseToDenseSchema(SparseSchema sparseSchema,
       JdbcConnector connector) throws SQLException {
     DenseSchema denseSchema = new DenseSchema();
     for (String schema : sparseSchema.schemas()) {
@@ -49,6 +52,15 @@ public class DbUtils {
     return denseSchema;
   }
 
+	/**
+	 * Collect columns for given schema, (table(s) (and column(s)))
+	 * 
+	 * @param sparseSchema
+	 * @param connector
+	 * @param metaConnector
+	 * @return	DenseSchema object - set of columns 
+	 * @throws SQLException
+	 */
   public static DenseSchema populateSchema(SparseSchema sparseSchema, JdbcConnector connector, MetaConnector metaConnector)
       throws SQLException {
     DenseSchema denseSchema = new DenseSchema();
@@ -76,11 +88,23 @@ public class DbUtils {
                       "No statistics available for " + schema + "." + table + "." + column);
                 }
               }
+              else{
+              	LOGGER.error("column does not exist for given schema and table");
+              	System.exit(-1);
+                
+              }
             }
+          }
+          else{
+          	LOGGER.error("table does not exist for given schema");
+          	System.exit(-1);
           }
         }
       }
-      // TODO log non existent schema?
+      else{
+      	LOGGER.error("schema does not exist");
+      	System.exit(-1);
+      }
     }
     return denseSchema;
   }

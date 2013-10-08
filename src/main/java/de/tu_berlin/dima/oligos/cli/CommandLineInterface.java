@@ -17,6 +17,7 @@ package de.tu_berlin.dima.oligos.cli;
 
 import java.io.File;
 
+import org.apache.log4j.Logger;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -61,11 +62,15 @@ public class CommandLineInterface {
   private String generatorName;
   private SparseSchema inputSchema;
   public Driver dbDriver;
-
+	private static final Logger LOGGER = Logger.getLogger(CommandLineInterface.class);
+	 
   public CommandLineInterface(String[] args) {
     this.inputString = args;
     this.helpFormatter = new HelpFormatter();
     this.dbDriver = null;
+   // BasicConfigurator.configure();
+  	// TODO create cmdline option for setting logger level 
+    // LOGGER.setLevel(Level.ALL);
   }
 
   public boolean parse() throws ParseException {

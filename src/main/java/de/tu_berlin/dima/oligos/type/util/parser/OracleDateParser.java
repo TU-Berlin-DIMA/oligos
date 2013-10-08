@@ -20,12 +20,17 @@ package de.tu_berlin.dima.oligos.type.util.parser;
 //import java.text.SimpleDateFormat;
 import java.text.SimpleDateFormat;
 
+import org.apache.log4j.Logger;
+
+import de.tu_berlin.dima.oligos.Oligos;
 import oracle.sql.DATE;
 import oracle.sql.converter.*;
 
 public class OracleDateParser extends AbstractParser<oracle.sql.DATE> {
   
-  private final static String DEFAULT_OUTPUT_FORMAT = "yyyy-mm-dd hh:mm:ss.a"; //"yyyy/mm/dd:hh:mi:ssam";
+  private final static String DEFAULT_OUTPUT_FORMAT = "yyyy-mm-dd hh:mm:ss"; //"yyyy/mm/dd:hh:mi:ssam";
+  
+  private static final Logger LOGGER = Logger.getLogger(OracleDateParser.class);
   
   /*
    *   @Override
@@ -42,15 +47,19 @@ public class OracleDateParser extends AbstractParser<oracle.sql.DATE> {
   // TODO: test correctness
   @Override
   public oracle.sql.DATE fromString(String value) {
-	  System.out.println("date value = " + value);
+  	LOGGER.debug("entering OracleDateParser:fromString with input value = " + value);
 	  oracle.sql.DATE date = new oracle.sql.DATE(value);
+	  LOGGER.debug("leaving OracleDateParser:fromString with output = " + date.toString());
  	  return date;
   }
 
   @Override
   public String toString(Object value) {
+  	LOGGER.debug("entering OracleDateParser:toString with input value = " + value.toString());
 	  SimpleDateFormat outFormat = new SimpleDateFormat(DEFAULT_OUTPUT_FORMAT);
-	  return outFormat.format(value);
+	  String outStr = outFormat.format(value);
+	  LOGGER.debug("leaving OracleDateParser:toString with output value = " + outStr);
+	  return outStr;
   }
 
 }
