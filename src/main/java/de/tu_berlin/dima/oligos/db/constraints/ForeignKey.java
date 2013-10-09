@@ -15,6 +15,7 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.db.constraints;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
@@ -62,12 +63,14 @@ public class ForeignKey extends AbstractConstraint {
   private final Set<String> childColumns;
 
   /**
-   * Creates a new foreign key.
+   * Creates a new foreign key. The {@link Builder} could also be used to create
+   * new foreign keys.
    * @param name The name of the foreign key
    * @param child The child/referencing  table 
    * @param childColumns The child/referencing columns
    * @param parent The parent/referenced table
    * @param parentColumns The parent/referenced columns
+   * @see {@link Builder}
    */
   public ForeignKey(
       final String name,
@@ -187,6 +190,106 @@ public class ForeignKey extends AbstractConstraint {
     strBld.append(parent.toString());
     strBld.append(parentColumns.toString());
     return strBld.toString();
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /**
+   * Incrementally builds a new {@link ForeignKey} instance.
+   * 
+   * @author Christoph Brücke (christoph.bruecke@campus.tu-berlin.de)
+   *
+   */
+  public static final class Builder {
+
+    private String name;
+    private TableRef parent;
+    private TableRef child;
+    private Collection<ColumnRef> parentColumns;
+    private Collection<ColumnRef> childColumns;
+
+    /**
+     * Creates a new builder instance. In order to get a new {@link ForeignKey}
+     * instance, call the {@link #build()} method.
+     * @see {@link ForeignKey}
+     */
+    public Builder() {
+      // TODO use incremental counter or other suitable default
+      this.name = "";
+      this.parent = null;
+      this.child = null;
+      this.parentColumns = new ArrayList<ColumnRef>();
+      this.childColumns = new ArrayList<ColumnRef>();
+    }
+
+    /**
+     * Sets the name of the {@link ForeignKey}.
+     * @param name The name of the foreign key.
+     * @return the current {@link Builder} instance with the name
+     */
+    public Builder setName(final String name) {
+      Preconditions.checkArgument(name != null);
+      this.name = name;
+      return this;
+    }
+
+    /**
+     * Adds columns to the {@link ForeignKey}. Consecutive calls to this method
+     * check if the child and parent columns match the previous child and parent
+     * tables.
+     * @param childColumn The child column
+     * @param parentColumn The parent column
+     * @return
+     *  the current {@link Builder} instance with the child and parent columns
+     * @throws IllegalArgumentException
+     *  if either the child column or the parent column are <code>null</code> or
+     *  the according child table or parent table does not match the current
+     *  child or parent table
+     */
+    public Builder addColumns(
+        final ColumnRef childColumn, final ColumnRef parentColumn) {
+      Preconditions.checkArgument(childColumn != null && parentColumn != null);
+      if (parent == null) {
+        parent = parentColumn.getTable();
+      } else {
+        Preconditions.checkArgument(parent.equals(parentColumn.getTable()));
+      }
+      if (child == null) {
+        child = childColumn.getTable();
+      } else {
+        Preconditions.checkArgument(child.equals(childColumn.getTable()));
+      }
+      parentColumns.add(parentColumn);
+      childColumns.add(childColumn);
+      return this;
+    }
+
+    /**
+     * Creates a new {@link ForeignKey}.
+     * @return a new {@link ForeignKey} using the name and the child and parent
+     * columns
+     * @throws IllegalStateException
+     *  if the current child or parent table is null or the child or parent
+     *  columns are empty
+     */
+    public ForeignKey build() {
+      Preconditions.checkState(
+          child != null && parent != null &&
+          !childColumns.isEmpty() && !parentColumns.isEmpty());
+      Collection<String> parentCols = new ArrayList<String>();
+      Collection<String> childCols = new ArrayList<String>();
+      Iterator<ColumnRef> parentColumnsIter = parentColumns.iterator();
+      Iterator<ColumnRef> childColumnsIter = childColumns.iterator();
+      while (parentColumnsIter.hasNext() && childColumnsIter.hasNext()) {
+        ColumnRef pc = parentColumnsIter.next();
+        ColumnRef cc = childColumnsIter.next();
+        parentCols.add(pc.getColumnName());
+        childCols.add(cc.getColumnName());
+      }
+      return new ForeignKey(name, child, childCols, parent, parentCols);
+    }
   }
 
 }
