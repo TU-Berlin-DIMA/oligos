@@ -21,6 +21,7 @@ import org.junit.experimental.theories.ParameterSignature;
 import org.junit.experimental.theories.ParameterSupplier;
 import org.junit.experimental.theories.PotentialAssignment;
 
+import de.tu_berlin.dima.oligos.db.constraints.ForeignKey;
 import de.tu_berlin.dima.oligos.db.reference.ColumnRef;
 import de.tu_berlin.dima.oligos.db.reference.SchemaRef;
 import de.tu_berlin.dima.oligos.db.reference.TableRef;
@@ -137,6 +138,40 @@ public final class TPCHModel extends ParameterSupplier {
   private final static ColumnRef S_PHONE = new ColumnRef(SUPPLIER, "S_PHONE");
   private final static ColumnRef S_SUPPKEY = new ColumnRef(SUPPLIER, "S_SUPPKEY");
 
+  private final static ForeignKey CUSTOMER_FK = ForeignKey.builder()
+      .setName("CUSTOMER_FK")
+      .addColumns(C_NATIONKEY, N_NATIONKEY)
+      .build();
+  private final static ForeignKey LINEITEM_FK1 = ForeignKey.builder()
+      .setName("LINEITEM_FK1")
+      .addColumns(L_PARTKEY, PS_PARTKEY)
+      .addColumns(L_SUPPKEY, PS_SUPPKEY)
+      .build();
+  private final static ForeignKey LINEITEM_FK2 = ForeignKey.builder()
+      .setName("LINEITEM_FK2")
+      .addColumns(L_ORDERKEY, O_ORDERKEY)
+      .build();
+  private final static ForeignKey NATION_FK = ForeignKey.builder()
+      .setName("NATION_FK")
+      .addColumns(N_REGIONKEY, R_REGIONKEY)
+      .build();
+  private final static ForeignKey ORDERS_FK = ForeignKey.builder()
+      .setName("ORDERS_FK")
+      .addColumns(O_CUSTKEY, C_CUSTKEY)
+      .build();
+  private final static ForeignKey PARTSUPP_FK1 = ForeignKey.builder()
+      .setName("PARTSUPP_FK1")
+      .addColumns(PS_PARTKEY, P_PARTKEY)
+      .build();
+  private final static ForeignKey PARTSUPP_FK2 = ForeignKey.builder()
+      .setName("PARTSUPP_FK2")
+      .addColumns(PS_SUPPKEY, S_SUPPKEY)
+      .build();
+  private final static ForeignKey SUPPLIER_FK = ForeignKey.builder()
+      .setName("SUPPLIER_FK")
+      .addColumns(S_NATIONKEY, N_NATIONKEY)
+      .build();
+
   /**
    * All tables unique to the TPCH schema
    */
@@ -171,6 +206,11 @@ public final class TPCHModel extends ParameterSupplier {
     S_ACCTBAL, S_ADDRESS, S_COMMENT, S_NAME, S_NATIONKEY, S_PHONE, S_SUPPKEY
   };
 
+  private final static ForeignKey[] FOREIGN_KEYS = {
+    CUSTOMER_FK, LINEITEM_FK1, LINEITEM_FK2, NATION_FK, ORDERS_FK, PARTSUPP_FK1,
+    PARTSUPP_FK2, SUPPLIER_FK
+  };
+
   //private final static Collection<ColumnRef> ALL_COLUMNS = Arrays.asList(COLUMNS);
 
   public TPCHModel() {}
@@ -203,6 +243,106 @@ public final class TPCHModel extends ParameterSupplier {
       }
     }
     return cols.toArray(new ColumnRef[cols.size()]);
+  }
+
+  public static ForeignKey[] getForeignKeys() {
+    return FOREIGN_KEYS;
+  }
+
+  public static ForeignKey[] getForeignKeys(final SchemaRef schema) {
+    ArrayList<ForeignKey> fks = new ArrayList<ForeignKey>();
+    for (ForeignKey fk : FOREIGN_KEYS) {
+      if (fk.getParent().getSchema().equals(schema) ||
+          fk.getChild().getSchema().equals(schema)) {
+        fks.add(fk);
+      }
+    }
+    return fks.toArray(new ForeignKey[fks.size()]);
+  }
+
+  public static ForeignKey[] getForeignKeys(final TableRef table) {
+    ArrayList<ForeignKey> fks = new ArrayList<ForeignKey>();
+    for (ForeignKey fk : FOREIGN_KEYS) {
+      if (fk.getParent().equals(table) ||
+          fk.getChild().equals(table)) {
+        fks.add(fk);
+      }
+    }
+    return fks.toArray(new ForeignKey[fks.size()]);
+  }
+
+  public static ForeignKey[] getCrossReferences(
+      final SchemaRef firstSchema, final SchemaRef secondSchema) {
+    ArrayList<ForeignKey> fks = new ArrayList<ForeignKey>();
+    for (ForeignKey fk : FOREIGN_KEYS) {
+      SchemaRef parentSchema = fk.getParent().getSchema();
+      SchemaRef childSchema = fk.getChild().getSchema();
+      if ((parentSchema.equals(firstSchema) && childSchema.equals(secondSchema))
+          ||
+          (childSchema.equals(firstSchema) && parentSchema.equals(secondSchema))) {
+        fks.add(fk);
+      }
+    }
+    return fks.toArray(new ForeignKey[fks.size()]);
+  }
+
+  public static ForeignKey[] getCrossReferences(
+      final TableRef firstTable, final TableRef secondTable) {
+    ArrayList<ForeignKey> fks = new ArrayList<ForeignKey>();
+    for (ForeignKey fk : FOREIGN_KEYS) {
+      SchemaRef parentTable = fk.getParent();
+      SchemaRef childTable = fk.getChild();
+      if ((parentTable.equals(firstTable) && childTable.equals(secondTable))
+          ||
+          (childTable.equals(firstTable) && parentTable.equals(secondTable))) {
+        fks.add(fk);
+      }
+    }
+    return fks.toArray(new ForeignKey[fks.size()]);
+  }
+
+  public static ForeignKey[] getExportedKeys(final SchemaRef schema) {
+    ArrayList<ForeignKey> fks = new ArrayList<ForeignKey>();
+    for (ForeignKey fk : FOREIGN_KEYS) {
+      if (fk.getParent().getSchema().equals(schema) &&
+          !fk.getChild().getSchema().equals(schema)) {
+        fks.add(fk);
+      }
+    }
+    return fks.toArray(new ForeignKey[fks.size()]);
+  }
+
+  public static ForeignKey[] getExportedKeys(final TableRef table) {
+    ArrayList<ForeignKey> fks = new ArrayList<ForeignKey>();
+    for (ForeignKey fk : FOREIGN_KEYS) {
+      if (fk.getParent().equals(table) &&
+          !fk.getChild().equals(table)) {
+        fks.add(fk);
+      }
+    }
+    return fks.toArray(new ForeignKey[fks.size()]);
+  }
+
+  public static ForeignKey[] getImportedKeys(final SchemaRef schema) {
+    ArrayList<ForeignKey> fks = new ArrayList<ForeignKey>();
+    for (ForeignKey fk : FOREIGN_KEYS) {
+      if (fk.getChild().getSchema().equals(schema) &&
+          !fk.getParent().getSchema().equals(schema)) {
+        fks.add(fk);
+      }
+    }
+    return fks.toArray(new ForeignKey[fks.size()]);
+  }
+
+  public static ForeignKey[] getImportedKeys(final TableRef table) {
+    ArrayList<ForeignKey> fks = new ArrayList<ForeignKey>();
+    for (ForeignKey fk : FOREIGN_KEYS) {
+      if (fk.getChild().equals(table) &&
+          !fk.getParent().equals(table)) {
+        fks.add(fk);
+      }
+    }
+    return fks.toArray(new ForeignKey[fks.size()]);
   }
 
   @Override

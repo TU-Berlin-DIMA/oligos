@@ -25,7 +25,6 @@ import static de.tu_berlin.dima.oligos.test.util.Matchers.hasSchema;
 import static de.tu_berlin.dima.oligos.test.util.Matchers.hasTable;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.anyOf;
-import static org.hamcrest.CoreMatchers.anything;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.everyItem;
 import static org.hamcrest.CoreMatchers.hasItems;
@@ -41,7 +40,6 @@ import java.util.Set;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.theories.ParametersSuppliedBy;
 import org.junit.experimental.theories.Theories;
@@ -175,10 +173,12 @@ public class JdbcConnectorTest {
    * TODO
    * @throws SQLException
    */
-  @Ignore
   @Test
   public void testGetForeignKeys() throws SQLException {
-    assertThat(null, not(anything()));
+    Set<ForeignKey> foreignKeys = jdbcConnector.getForeignKeys();
+    ForeignKey[] expected = TPCHModel.getForeignKeys();
+    assertThat(foreignKeys, hasSize(greaterThanOrEqualTo(expected.length)));
+    assertThat(foreignKeys, hasItems(expected));
   }
 
   /**
@@ -196,6 +196,9 @@ public class JdbcConnectorTest {
         everyItem(anyOf(
             hasParentSchema(schema),
             hasChildSchema(schema))));
+    ForeignKey[] expected = TPCHModel.getForeignKeys(schema);
+    assertThat(foreignKeys, hasSize(greaterThanOrEqualTo(expected.length)));
+    assertThat(foreignKeys, hasItems(expected));
   }
 
   /**
@@ -213,8 +216,7 @@ public class JdbcConnectorTest {
         everyItem(anyOf(
             hasParentTable(table),
             hasChildTable(table))));
-    // TODO fill with values from the model
-    ForeignKey[] expected = {};
+    ForeignKey[] expected = TPCHModel.getForeignKeys(table);
     assertThat(foreignKeys, hasSize(greaterThanOrEqualTo(expected.length)));
     assertThat(foreignKeys, hasItems(expected));
   }
@@ -226,8 +228,7 @@ public class JdbcConnectorTest {
   @Test
   public void testGetCrossReferences() throws SQLException {
     Set<ForeignKey> crossReferences = jdbcConnector.getCrossReferences();
-    // TODO get all foreign keys from the model
-    ForeignKey[] expected = {};
+    ForeignKey[] expected = TPCHModel.getForeignKeys();
     assertThat(crossReferences, hasSize(greaterThanOrEqualTo(expected.length)));
     assertThat(crossReferences, hasItems(expected));
     assertThat(crossReferences, equalTo(jdbcConnector.getForeignKeys()));
@@ -245,7 +246,6 @@ public class JdbcConnectorTest {
       final SchemaRef firstSchema,
       @ParametersSuppliedBy(TPCHModel.class)
       final SchemaRef secondSchema) throws SQLException {
-    // TODO
     Set<ForeignKey> crossReferences = 
         jdbcConnector.getCrossReferences(firstSchema, secondSchema);
     assertThat(crossReferences, 
@@ -257,8 +257,7 @@ public class JdbcConnectorTest {
                 allOf(
                     hasChildSchema(secondSchema),
                     hasParentSchema(firstSchema)))));
-    // TODO fill with values from the model
-    ForeignKey[] expected = {};
+    ForeignKey[] expected = TPCHModel.getCrossReferences(firstSchema, secondSchema);
     assertThat(crossReferences, hasSize(greaterThanOrEqualTo(expected.length)));
     assertThat(crossReferences, hasItems(expected));
   }
@@ -286,8 +285,7 @@ public class JdbcConnectorTest {
                 allOf(
                     hasChildTable(secondTable),
                     hasParentTable(firstTable)))));
-    // TODO fill with values from the model
-    ForeignKey[] expected = {};
+    ForeignKey[] expected = TPCHModel.getCrossReferences(firstTable, secondTable);
     assertThat(crossReferences, hasSize(greaterThanOrEqualTo(expected.length)));
     assertThat(crossReferences, hasItems(expected));
   }
@@ -304,8 +302,7 @@ public class JdbcConnectorTest {
     Set<ForeignKey> importedKeys = jdbcConnector.getImportedKeys(schema);
     assertThat(importedKeys, everyItem(hasChildSchema(schema)));
     assertThat(importedKeys, everyItem(hasParentSchema(not(schema))));
-    // TODO fill with values from the model
-    ForeignKey[] expected = {};
+    ForeignKey[] expected = TPCHModel.getImportedKeys(schema);
     assertThat(importedKeys, hasSize(greaterThanOrEqualTo(expected.length)));
     assertThat(importedKeys, hasItems(expected));
   }
@@ -320,10 +317,9 @@ public class JdbcConnectorTest {
       @ParametersSuppliedBy(TPCHModel.class)
       final TableRef table) throws SQLException {
     Set<ForeignKey> importedKeys = jdbcConnector.getImportedKeys(table);
-    assertThat(importedKeys, everyItem(hasChildTable(equalTo(table))));
-    assertThat(importedKeys, everyItem(hasParentTable(not(equalTo(table)))));
-    // TODO fill with values from the model
-    ForeignKey[] expected = {};
+    assertThat(importedKeys, everyItem(hasChildTable(table)));
+    assertThat(importedKeys, everyItem(hasParentTable(not(table))));
+    ForeignKey[] expected = TPCHModel.getImportedKeys(table);
     assertThat(importedKeys, hasSize(greaterThanOrEqualTo(expected.length)));
     assertThat(importedKeys, hasItems(expected));
   }
@@ -340,8 +336,7 @@ public class JdbcConnectorTest {
     Set<ForeignKey> importedKeys = jdbcConnector.getExportedKeys(schema);
     assertThat(importedKeys, everyItem(hasParentSchema(schema)));
     assertThat(importedKeys, everyItem(hasChildSchema(not(schema))));
-    // TODO fill with values from the model
-    ForeignKey[] expected = {};
+    ForeignKey[] expected = TPCHModel.getExportedKeys(schema);
     assertThat(importedKeys, hasSize(greaterThanOrEqualTo(expected.length)));
     assertThat(importedKeys, hasItems(expected));
   }
@@ -358,8 +353,7 @@ public class JdbcConnectorTest {
     Set<ForeignKey> importedKeys = jdbcConnector.getExportedKeys(table);
     assertThat(importedKeys, everyItem(hasParentTable(table)));
     assertThat(importedKeys, everyItem(hasChildTable(not(table))));
-    // TODO fill with values from the model
-    ForeignKey[] expected = {};
+    ForeignKey[] expected = TPCHModel.getExportedKeys(table);
     assertThat(importedKeys, hasSize(greaterThanOrEqualTo(expected.length)));
     assertThat(importedKeys, hasItems(expected));
   }

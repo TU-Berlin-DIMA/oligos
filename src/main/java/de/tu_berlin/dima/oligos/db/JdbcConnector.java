@@ -15,6 +15,13 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.db;
 
+import static com.google.common.base.Predicates.and;
+import static com.google.common.base.Predicates.not;
+import static de.tu_berlin.dima.oligos.util.Predicates.hasChild;
+import static de.tu_berlin.dima.oligos.util.Predicates.hasChildSchema;
+import static de.tu_berlin.dima.oligos.util.Predicates.hasParent;
+import static de.tu_berlin.dima.oligos.util.Predicates.hasParentSchema;
+
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -31,10 +38,12 @@ import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.commons.dbutils.handlers.AbstractListHandler;
 import org.apache.commons.dbutils.handlers.MapHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
+import org.javatuples.Quartet;
 
+import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.javatuples.Quartet;
+
 import de.tu_berlin.dima.oligos.db.constraints.ForeignKey;
 import de.tu_berlin.dima.oligos.db.handler.jdbc.ForeignKeysHandler;
 import de.tu_berlin.dima.oligos.db.handler.meta.ColumnRefsHandler;
@@ -129,7 +138,8 @@ public class JdbcConnector {
    * @throws SQLException if a database access error occurs
    * @since 0.3.1
    */
-  public Collection<TableRef> getTables(final SchemaRef schema) throws SQLException {
+  public Collection<TableRef> getTables(
+      final SchemaRef schema) throws SQLException {
     String catalog = null;
     String schemaPattern = schema.getSchemaName();
     String tablePattern = null;
@@ -252,7 +262,8 @@ public class JdbcConnector {
    * @since 0.3.1
    * @see {@link ForeignKey}
    */
-  public Set<ForeignKey> getForeignKeys(SchemaRef schema) throws SQLException {
+  public Set<ForeignKey> getForeignKeys(
+      final SchemaRef schema) throws SQLException {
     Set<ForeignKey> fKeys = Sets.newHashSet();
     fKeys.addAll(getImportedKeys(schema));
     fKeys.addAll(getExportedKeys(schema));
@@ -270,10 +281,16 @@ public class JdbcConnector {
    * @since 0.3.1
    * @see {@link ForeignKey}
    */
-  public Set<ForeignKey> getForeignKeys(TableRef table) throws SQLException {
+  public Set<ForeignKey> getForeignKeys(
+      final TableRef table) throws SQLException {
     Set<ForeignKey> fKeys = Sets.newHashSet();
-    fKeys.addAll(getImportedKeys(table));
-    fKeys.addAll(getExportedKeys(table));
+    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler();
+    ResultSet rs = 
+        metaData.getImportedKeys(null, table.getSchemaName(), table.getTableName());
+    fKeys.addAll(handler.handle(rs));
+    rs =
+        metaData.getExportedKeys(null, table.getSchemaName(), table.getTableName());
+    fKeys.addAll(handler.handle(rs));
     return fKeys;
   }
 
@@ -352,38 +369,42 @@ public class JdbcConnector {
 
   /**
    * Retrieves all foreign keys imported by the schema, i.e. foreign keys, where
-   * the schema is the referencing/child schema.
+   * the child is in the schema and the child is outside of the schema.
    * @param schema The child schema
    * @return all foreign keys imported by the schema
    * @throws SQLException
    * @since 0.3.1
    * @see {@link ForeignKey}
    */
-  public Set<ForeignKey> getImportedKeys(SchemaRef schema) throws SQLException {
+  public Set<ForeignKey> getImportedKeys(
+      final SchemaRef schema) throws SQLException {
     Set<ForeignKey> fKeys = Sets.newHashSet();
+    Predicate<ResultSet> pred =
+        and(hasChildSchema(schema), not(hasParentSchema(schema)));
+    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler(pred);
     Collection<TableRef> tables = getTables(schema);
     for (TableRef table : tables) {
-      Set<ForeignKey> candidates = getImportedKeys(table);
-      for (ForeignKey candidate : candidates) {
-        if (!candidate.getParent().equals(schema)) {
-          fKeys.add(candidate);
-        }
-      }
+      ResultSet rs = metaData.getImportedKeys(
+          null, schema.getSchemaName(), table.getTableName());
+      Set<ForeignKey> fks = handler.handle(rs);
+      fKeys.addAll(fks);
     }
     return fKeys;
   }
 
   /**
    * Retrieves all foreign keys imported by the table, i.e. foreign keys, where
-   * the schema is the referencing/child table.
+   * the table is the child but not the parent.
    * @param table The child table
    * @return all foreign keys imported by the table
    * @throws SQLException
    * @since 0.3.1
    * @see {@link ForeignKey}
    */
-  public Set<ForeignKey> getImportedKeys(TableRef table) throws SQLException {
-    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler();
+  public Set<ForeignKey> getImportedKeys(
+      final TableRef table) throws SQLException {
+    Predicate<ResultSet> pred = and(hasChild(table), not(hasParent(table)));
+    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler(pred);
     ResultSet rs = metaData.getImportedKeys(
         null, table.getSchemaName(), table.getTableName());
     return handler.handle(rs);
@@ -391,38 +412,42 @@ public class JdbcConnector {
 
   /**
    * Retrieves all foreign keys exported by the schema, i.e. foreign keys, where
-   * the schema is the referenced/parent schema.
+   * the parent is in the schema and the child is outside of the schema.
    * @param table The parent schema
    * @return all foreign keys exported by the schema
    * @throws SQLException
    * @since 0.3.1
    * @see {@link ForeignKey}
    */
-  public Set<ForeignKey> getExportedKeys(SchemaRef schema) throws SQLException {
+  public Set<ForeignKey> getExportedKeys(
+      final SchemaRef schema) throws SQLException {
     Set<ForeignKey> fKeys = Sets.newHashSet();
+    Predicate<ResultSet> pred =
+        and(hasParentSchema(schema), not(hasChildSchema(schema)));
+    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler(pred);
     Collection<TableRef> tables = getTables(schema);
     for (TableRef table : tables) {
-      Set<ForeignKey> candidates = getExportedKeys(table);
-      for (ForeignKey candidate : candidates) {
-        if (!candidate.getParent().equals(schema)) {
-          fKeys.add(candidate);
-        }
-      }
+      ResultSet rs = metaData.getExportedKeys(
+          null, schema.getSchemaName(), table.getTableName());
+      Set<ForeignKey> fks = handler.handle(rs);
+      fKeys.addAll(fks);
     }
     return fKeys;
   }
 
   /**
    * Retrieves all foreign keys exported by the table, i.e. foreign keys, where
-   * the table is the referenced/parent table.
+   * the table is the parent but not the child.
    * @param table The parent table
    * @return all foreign keys exported by the table
    * @throws SQLException
    * @since 0.3.1
    * @see {@link ForeignKey}
    */
-  public Set<ForeignKey> getExportedKeys(TableRef table) throws SQLException {
-    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler();
+  public Set<ForeignKey> getExportedKeys(final TableRef table)
+      throws SQLException {
+    Predicate<ResultSet> pred = and(hasParent(table), not(hasChild(table)));
+    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler(pred);
     ResultSet rs = metaData.getExportedKeys(
         null, table.getSchemaName(), table.getTableName());
     return handler.handle(rs);
