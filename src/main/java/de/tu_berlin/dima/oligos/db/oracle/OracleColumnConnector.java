@@ -55,7 +55,7 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 						"ownname => '<schema>', " +
 						"tabname => '<table>', " + 
 						"estimate_percent => 100, " + 
-						"method_opt => 'for columns <column> SIZE 20'" +
+						"method_opt => 'for columns <column> SIZE 10'" +
 					"); " +
 			"end;";
 	
@@ -73,7 +73,9 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 			"num_nulls, num_distinct, nullable, data_type, data_length, data_scale " +
 			"FROM ALL_TAB_COLUMNS WHERE owner = ? AND table_name = ? AND column_name = ?";
 
-	// TODO: does not work for strings
+	/**
+	 * Most frequent values for type in {number, string}
+	 */
 	private String MOST_FREQUENT_QUERY_GENERIC =
 			"SELECT endpoint_value, endpoint_number - nvl(prev_number,0) frequency " +
 			"FROM (" + 
@@ -83,6 +85,23 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 			") " + 
 			"ORDER BY frequency DESC";
 	
+	/**
+	 * Most frequent values for date type
+	 */
+	private String MOST_FREQUENT_QUERY_DATE =
+			"SELECT to_date(endpoint_value, 'J'), endpoint_number - nvl(prev_number,0) frequency " +
+			"FROM (" + 
+			"SELECT endpoint_value, endpoint_number, lag(endpoint_number,1) over(order by endpoint_number) prev_number " +
+			"FROM USER_TAB_HISTOGRAMS " +
+			"WHERE table_name = ? AND column_name = ?" +
+			") " + 
+			"ORDER BY frequency DESC";
+	
+	
+	
+	/**
+	 *  Most frequent values for strings using the endpoint_actual_value field when strings do not differ in ~ first 6 Bytes
+	 */
 	private String MOST_FREQUENT_QUERY_STRING = 
 			"SELECT endpoint_actual_value as endpoint_value, endpoint_number - nvl(prev_number,0) frequency "+
 			"FROM (SELECT endpoint_actual_value, endpoint_number, lag(endpoint_number,1) over(order by endpoint_number) prev_number "+
@@ -90,45 +109,72 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 			"WHERE table_name = ? AND column_name = ?) "+
 			"ORDER BY frequency DESC";
 		
-	// for number and string column types
+	/**
+	 *  Oracle's dictionary either provides a height-balanced or a frequency histogram 
+	 * depending on whether number of buckets falls below the number of distinct values 
+	 * */
+	
+	/**
+	 *  cdf query for height-balanced histograms on numbers and strings
+	 */
 	private String HISTOGRAM_HEIGHT_BALANCED_NUMBER = 
 			"SELECT ENDPOINT_VALUE as colvalue, endpoint_number*num_rows/num_buckets as cdf " +
 			"FROM USER_HISTOGRAMS uh, ALL_TAB_STATISTICS at, ALL_TAB_COL_STATISTICS atc " +
 			"WHERE  atc.OWNER = ? AND atc.TABLE_NAME = ? AND atc.COLUMN_NAME = ? " + 
 			"AND uh.TABLE_NAME= atc.TABLE_NAME " +
 			"AND uh.COLUMN_NAME= atc.COLUMN_NAME " +
-			"AND at.TABLE_NAME= uh.TABLE_NAME";
+			"AND at.TABLE_NAME= uh.TABLE_NAME " +
+			"ORDER BY endpoint_number ASC";
 
-	// for column type date
+  /**
+   * cdf query for height-balanced histograms on date type
+   */
 	private String HISTOGRAM_HEIGHT_BALANCED_DATE = 
 			"SELECT to_date(ENDPOINT_VALUE, 'J') as colvalue, endpoint_number*num_rows/num_buckets as cdf " +
 			"FROM USER_HISTOGRAMS uh, USER_TAB_STATISTICS at, ALL_TAB_COL_STATISTICS atc " +
 			"WHERE  atc.OWNER = ? AND atc.TABLE_NAME = ? AND atc.COLUMN_NAME = ? " + 
 			"AND uh.TABLE_NAME= atc.TABLE_NAME " +
 			"AND uh.COLUMN_NAME= atc.COLUMN_NAME " +
-			"AND at.TABLE_NAME= uh.TABLE_NAME";
+			"AND at.TABLE_NAME= uh.TABLE_NAME " +
+			"ORDER BY endpoint_number ASC";
 	
-
-	private String QUANTILE_HISTOGRAM_QUERY_DATE =
-			"SELECT to_date(ENDPOINT_VALUE, 'J') as colvalue, round((NUM_ROWS*(Select CUME_DIST(to_date(endpoint_value, 'J')) " +
+	/**
+	 * cdf query for frequency histograms
+	 */
+	private String HISTOGRAM_FREQ_DATE =
+			"SELECT to_date(ENDPOINT_VALUE, 'J') as colvalue, ENDPOINT_NUMBER as cdf " +
+			"FROM ALL_TAB_HISTOGRAMS " +
+			"WHERE owner = ? AND table_name = ? and column_name = ? " +
+			"ORDER BY endpoint_number ASC";
+	
+		/*	"SELECT to_date(ENDPOINT_VALUE, 'J') as colvalue, round((NUM_ROWS*(Select CUME_DIST(to_date(endpoint_value, 'J')) " +
 			"WITHIN GROUP (ORDER BY <column>) FROM <table>)),0) as cdf " +
 			"FROM   DUAL, USER_HISTOGRAMS uh, USER_TAB_STATISTICS at " +
 			"WHERE  uh.TABLE_NAME= ? " +
 			"AND    uh.COLUMN_NAME= ? " +
 			"AND    at.TABLE_NAME= uh.TABLE_NAME " +
 			"ORDER BY cdf asc";
-	
+	*/
 	/**
 	 * Query string for numbers and strings that are unique in the first ~6 Bytes
 	 */
-	private String QUANTILE_HISTOGRAM_QUERY_NUMBER = 
+	// begin dbms_stats.gather_table_stats(ownname => 'tpch', tabname => 'h_order', estimate_percent => 100, method_opt => 'for columns o_orderstatus SIZE 10'); end;
+	//SELECT ENDPOINT_VALUE as colvalue, ENDPOINT_NUMBER as cdf, table_name as tab, column_name as col FROM ALL_TAB_HISTOGRAMS WHERE owner = 'TPCH' AND table_name = 'h_order' and column_name = 'o_orderstatus'
+	//SELECT ENDPOINT_VALUE as colvalue, ENDPOINT_NUMBER as cdf FROM ALL_TAB_HISTOGRAMS WHERE owner = 'TPCH' AND table_name = 'H_ORDER' and column_name = 'O_ORDERSTATUS';
+	private String HISTOGRAM_FREQ_NUMBER = 
+			"SELECT ENDPOINT_VALUE as colvalue, ENDPOINT_NUMBER as cdf " +
+			"FROM ALL_TAB_HISTOGRAMS " +
+			"WHERE owner = ? AND table_name = ? and column_name = ? " +
+			"ORDER BY endpoint_number ASC";
+	
+	/*private String QUANTILE_HISTOGRAM_QUERY_NUMBER = 
 			"SELECT ENDPOINT_VALUE as colvalue, round((NUM_ROWS*(Select CUME_DIST(endpoint_value) " + 
 			"WITHIN GROUP (ORDER BY <column>) FROM <table>)),0) as cdf " + // insert w/o quotation marks
 			"FROM   DUAL, USER_HISTOGRAMS uh, ALL_TAB_STATISTICS at " +
 			"WHERE  uh.TABLE_NAME= ? " + // insert w/ quotation marks
 			"AND    uh.COLUMN_NAME= ? " +
 			"AND    at.TABLE_NAME= uh.TABLE_NAME " +
-			"ORDER BY cdf ASC";
+			"ORDER BY cdf ASC";*/
 	
 	/**
 	 * Query for presence of endpoint actual value
@@ -140,7 +186,8 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 			"AND ROWNUM <= 1";
 	
 	private String HISTOGRAM_TYPE = 
-			"SELECT HISTOGRAM FROM ALL_TAB_COL_STATISTICS";
+			"SELECT HISTOGRAM FROM ALL_TAB_COL_STATISTICS " +
+			"WHERE TABLE_NAME = ? AND COLUMN_NAME = ?";
 
 	private final JdbcConnector connector;
 	private final String schema;
@@ -228,8 +275,6 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	  	this.DOMAIN_QUERY = this.DOMAIN_QUERY.replaceAll("<T>", "num");	
 	  else if (this.columnType.equals(String.class))
 	  	this.DOMAIN_QUERY = this.DOMAIN_QUERY.replaceAll("<T>", "str");
-	  else if (this.columnType.equals(Character.class))
-	  	this.DOMAIN_QUERY = this.DOMAIN_QUERY.replaceAll("<T>", "str");
 	  else{
 	  	LOGGER.error("Unsupported column type: " + this.columnType.toString() + " for column '" + this.column + "' in table '" + this.table +"'");
 //	  	throw new Error("Unknown column type: " + this.columnType.toString());
@@ -246,21 +291,22 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	 * @throws SQLException 
 	 */
 	private void setHistogramAndMostFrequentQueryString(){
+		LOGGER.trace("Histogram check");
 		// check for histogram type height balanced, frequency, or none
 		try {
-			T histogram = this.connector.scalarQuery(this.HISTOGRAM_TYPE, "histogram");
+			//System.out.println("Histogram type query string = " + this.HISTOGRAM_TYPE);
+			T histogram = this.connector.scalarQuery(this.HISTOGRAM_TYPE, "histogram", this.table, this.column);
 			if (histogram.equals("HEIGHT BALANCED"))
 				this.isHeightBalanced = true;
-			System.out.println("histogram type is = " + histogram.toString());
 		} catch (SQLException e1) {
 			e1.printStackTrace();
 		}
 		// set to date query
 		if (this.columnType.equals(Date.class))
-	  	this.HISTOGRAM_QUERY = (this.isHeightBalanced) ? this.HISTOGRAM_HEIGHT_BALANCED_DATE : this.QUANTILE_HISTOGRAM_QUERY_DATE;
-		// set to number query
+	  	this.HISTOGRAM_QUERY = (this.isHeightBalanced) ? this.HISTOGRAM_HEIGHT_BALANCED_DATE : this.HISTOGRAM_FREQ_DATE;
+		// set to number/string query
 	  else if (this.columnType.equals(BigDecimal.class))
-	  	this.HISTOGRAM_QUERY = (this.isHeightBalanced) ? this.HISTOGRAM_HEIGHT_BALANCED_NUMBER : this.QUANTILE_HISTOGRAM_QUERY_NUMBER;
+	  	this.HISTOGRAM_QUERY = (this.isHeightBalanced) ? this.HISTOGRAM_HEIGHT_BALANCED_NUMBER : this.HISTOGRAM_FREQ_NUMBER;
 	  // set to string query
 	  else if (this.columnType.equals(String.class)){
 	  	try {// if endpoint_actual_value present, read it out (return type is string)
@@ -269,25 +315,23 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 					this.isEndpointActualValue = true;
 				// read endpoint_actual_value column from ALL_TAB_HISTOGRAMS
 				if (this.isEndpointActualValue){
-//					this.isHeightBalanced = false; // decomment this
 					this.HISTOGRAM_QUERY = (this.isHeightBalanced) ? 
 							this.HISTOGRAM_HEIGHT_BALANCED_NUMBER.replaceFirst("endpoint_value", "endpoint_actual_value") : 
-								this.QUANTILE_HISTOGRAM_QUERY_NUMBER.replaceAll("endpoint_value", "endpoint_actual_value");
+								this.HISTOGRAM_FREQ_NUMBER.replaceAll("endpoint_value", "endpoint_actual_value");
 				}
 				// else read endpoint_value column from ALL_TAB_HISTOGRAMS
 				else
-						this.HISTOGRAM_QUERY = (this.isHeightBalanced) ? this.HISTOGRAM_HEIGHT_BALANCED_NUMBER : this.QUANTILE_HISTOGRAM_QUERY_NUMBER;
+						this.HISTOGRAM_QUERY = (this.isHeightBalanced) ? this.HISTOGRAM_HEIGHT_BALANCED_NUMBER : this.HISTOGRAM_FREQ_NUMBER;
 				
 			} catch (SQLException e) {
 				e.printStackTrace();
 				System.exit(-1);
 			}
 	  }
-	  else if (this.columnType.equals(Character.class))
-	  	this.HISTOGRAM_QUERY = this.QUANTILE_HISTOGRAM_QUERY_NUMBER;
 	  else
 	  	throw new Error("Unknown column type");
 		this.MOST_FREQUENT_QUERY = (this.isEndpointActualValue) ? this.MOST_FREQUENT_QUERY_STRING : this.MOST_FREQUENT_QUERY_GENERIC;
+		this.MOST_FREQUENT_QUERY = (this.columnType.equals(Date.class)) ? this.MOST_FREQUENT_QUERY_DATE : this.MOST_FREQUENT_QUERY;
 		this.HISTOGRAM_QUERY = this.HISTOGRAM_QUERY.replaceAll("<table>", this.table).replaceAll("<column>", this.column);
 	}
 	
@@ -365,7 +409,7 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 		LOGGER.debug("entering OracleColumnConnector:getMostFreqVals ...");
 		Map<T, Long> ret = this.connector.histogramQuery(this.MOST_FREQUENT_QUERY, "endpoint_value", "frequency", this.parser, this.table, this.column);
 		// convert keys into strings if endpoint_actual_value was empty  
-		if (!this.isEndpointActualValue && this.columnType.equals(String.class)){
+		if (!this.isEndpointActualValue && (this.columnType.equals(String.class))){
 			Map<String, Long> ret_new = Maps.newLinkedHashMap();
 			for (Map.Entry<T, Long> entry: ret.entrySet()){
 				ret_new.put(oraNum2String(new BigDecimal((String)entry.getKey())), entry.getValue());
@@ -376,26 +420,21 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 		return ret;
 	}
 	
+	@SuppressWarnings("unchecked")
 	@Override
 	public Map<T, Long> getHistogram() throws SQLException {
 		LOGGER.debug("entering OracleColumnConnector:getHistogram ...");
-		Map<T, Long> ret = (this.isHeightBalanced) ?
-				this.connector.histogramQuery(HISTOGRAM_QUERY, "colvalue", "cdf", this.parser, this.schema, this.table, this.column) :
-				this.connector.histogramQuery(HISTOGRAM_QUERY, "colvalue", "cdf", this.parser, this.table, this.column);
+		Map<T, Long> ret = this.connector.histogramQuery(HISTOGRAM_QUERY, "colvalue", "cdf", this.parser, this.schema, this.table, this.column);
+				//this.connector.histogramQuery(HISTOGRAM_QUERY, "colvalue", "cdf", this.parser, this.table, this.column);
 		
 		// test whether output has to be converted
-		if (!this.isEndpointActualValue && this.columnType.equals(String.class) || this.columnType.equals(Character.class))
-		{
+		if (!this.isEndpointActualValue && this.columnType.equals(String.class)){
 			Map<String, Long> ret_new = Maps.newLinkedHashMap();
 			for (Map.Entry<T, Long> entry: ret.entrySet()){
 				ret_new.put(oraNum2String(new BigDecimal((String)entry.getKey())), entry.getValue());
-		//		System.out.println("ret_new[" + oraNum2String(new BigDecimal((String)entry.getKey())) + "] = " + entry.getValue());
 			}
 			return (Map<T, Long>) ret_new;
 		}
-		//for (Map.Entry<T, Long> entry :ret.entrySet())
-		//	System.out.println("hist[" + entry.getKey().toString() + "] = " + entry.getValue().toString());
-		
 		LOGGER.debug("leaving OracleColumnConnector:getHistogram");
 		return ret;
 	}
@@ -432,13 +471,9 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	 * Register right before usage raw2str conversion function with appropriate buffer size to avoid PL/SQL buffer size errors.
 	 */
 	private void register_raw2str_func(){
-	  if (this.columnType.equals(String.class) || this.columnType.equals(Character.class)){
-	  	if (this.columnType.equals(String.class))
-	  		this.RAW2STR_FUNC = this.RAW2STR_FUNC.replaceAll("<length>", Integer.toString(type.getLength()));
-	  	else if (this.columnType.equals(Character.class))
-	  		this.RAW2STR_FUNC = this.RAW2STR_FUNC.replaceAll("<length>", Integer.toString(1));
+	  if (this.columnType.equals(String.class)){
+	  	this.RAW2STR_FUNC = this.RAW2STR_FUNC.replaceAll("<length>", Integer.toString(type.getLength()));
 	  	try {
-	  		//System.out.println("exec raw2str_func = " + this.RAW2STR_FUNC);
 	  		this.connector.execPreparedStmt(RAW2STR_FUNC);
 	  	} catch (SQLException e) {
 	  		e.printStackTrace();

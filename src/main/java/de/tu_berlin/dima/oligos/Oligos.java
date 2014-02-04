@@ -32,8 +32,6 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-import oracle.sql.DATE;
-
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
@@ -68,7 +66,6 @@ import de.tu_berlin.dima.oligos.type.util.operator.CharOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 import de.tu_berlin.dima.oligos.type.util.operator.StringOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.DateOperator;
-import de.tu_berlin.dima.oligos.type.util.operator.date.OracleDateOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.TimeOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.TimestampOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.numerical.BigDecimalOperator;
@@ -223,15 +220,8 @@ public class Oligos {
 	      ColumnConnector<Timestamp> connector = new OracleColumnConnector<Timestamp>(jdbcConnector, schema, table, column, Date.class, p); 
 	    	profiler = new ColumnProfiler<Timestamp>(schema, table, column, type, isEnum, connector, op, p);
 	  } 
-	  else if (typeName.equals("char") || typeName.equals("nchar")) {
-	  		LOGGER.debug("column type is char or nchar");
-	  		Parser<Character> p = new CharParser();
-	    	Operator<Character> op = new CharOperator();
-	    	ColumnConnector<Character> connector = new OracleColumnConnector<Character>(
-	    										jdbcConnector, schema, table, column, Character.class, p); 
-	    	profiler = new ColumnProfiler<Character>(schema, table, column, type, isEnum, connector, op, p);
-	  } 
-	  else if (typeName.equals("varchar2") || typeName.equals("nvarchar2") || 
+	  // treat char as strings, due to Oracle's conversion to numbers no trimming is allowed
+	  else if (typeName.equals("varchar2") || typeName.equals("nvarchar2") || typeName.equals("char") || typeName.equals("nchar") ||
 	  		typeName.equals("varchar") || typeName.equals("nvarchar")) {
 	  		LOGGER.debug("column type is varchar2");
 	  		Parser<String> p = new StringParser();
@@ -257,7 +247,7 @@ public class Oligos {
   	BasicConfigurator.configure();
   
   	// TODO create cmdline option for setting logger level 
-    LOGGER.setLevel(Level.ALL);
+    LOGGER.setLevel(Level.INFO);
   	CommandLineInterface cli = new CommandLineInterface(args);
     try {
       // TODO hard exit if the parsing fails!

@@ -133,7 +133,7 @@ public class JdbcConnector {
    */
   @Deprecated
   public Set<Quartet<String, String, String, String>> getReferences(final String schema) throws SQLException{
-  	LOGGER.debug("entering JdbcConnector:getReferences ..."); 
+  	LOGGER.error("JdbcConnector:getReferences deprecated!"); 
     Set<Quartet<String, String, String, String>> references = Sets.newHashSet();
 	  ResultSet result;
 	  Collection<String> tables = this.getTables(schema);
@@ -148,8 +148,7 @@ public class JdbcConnector {
 			  references.add(ri);
 		  }
 	  }
-	  LOGGER.debug("leaving JdbcConnector:getReferences"); 
-    return references;
+	  return references;
   }
 
   /**
