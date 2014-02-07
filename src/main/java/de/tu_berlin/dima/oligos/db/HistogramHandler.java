@@ -19,8 +19,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import org.apache.commons.dbutils.ResultSetHandler;
-import oracle.sql.DATE;
-
 import com.google.common.collect.Maps;
 
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;

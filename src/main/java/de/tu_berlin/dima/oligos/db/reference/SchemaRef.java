@@ -39,7 +39,7 @@ public class SchemaRef {
    * @return
    */
   public SchemaRef getSchema() {
-    return this;
+    return new SchemaRef(schema);
   }
 
   /**

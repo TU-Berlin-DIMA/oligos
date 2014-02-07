@@ -15,14 +15,11 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.type.util.operator.date;
 
-import de.tu_berlin.dima.oligos.Oligos;
 import de.tu_berlin.dima.oligos.type.util.operator.Operator;
 
 import org.apache.log4j.Logger;
 
 import java.sql.SQLException;
-import java.sql.Timestamp;
-//import java.sql.*;
 
 // TODO test operator functions
 public class OracleDateOperator implements Operator<oracle.sql.DATE> {

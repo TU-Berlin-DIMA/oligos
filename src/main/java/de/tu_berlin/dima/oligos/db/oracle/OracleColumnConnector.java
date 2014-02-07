@@ -19,15 +19,12 @@ package de.tu_berlin.dima.oligos.db.oracle;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import de.tu_berlin.dima.oligos.Oligos;
 import de.tu_berlin.dima.oligos.db.ColumnConnector;
 import de.tu_berlin.dima.oligos.db.JdbcConnector;
 import de.tu_berlin.dima.oligos.type.util.ColumnId;
@@ -194,7 +191,7 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	private final String table;
 	private final String column;
 	private final Parser<T> parser;
-	private final Class columnType;
+	private final Class<?> columnType;
 	private final TypeInfo type;
 	private String HISTOGRAM_QUERY;
 	private String MOST_FREQUENT_QUERY;
@@ -208,12 +205,12 @@ public class OracleColumnConnector<T> implements ColumnConnector<T> {
 	
 	// deprecated -> need typeInfo Object
 	public OracleColumnConnector(final JdbcConnector jdbcConnector, final String schema
-      , final String table, final String column, final Class columnType,final Parser<T> parser) {
+      , final String table, final String column, final Class<?> columnType,final Parser<T> parser) {
 		this(jdbcConnector, schema, table, column, columnType, parser, null);
 	}
 	
 	public OracleColumnConnector(final JdbcConnector jdbcConnector, final String schema
-      , final String table, final String column, final Class columnType,final Parser<T> parser, TypeInfo type){
+      , final String table, final String column, final Class<?> columnType,final Parser<T> parser, TypeInfo type){
 		LOGGER.debug("entering OracleColumnConnector() ...");
 		this.connector = jdbcConnector;
 	  this.schema = schema;

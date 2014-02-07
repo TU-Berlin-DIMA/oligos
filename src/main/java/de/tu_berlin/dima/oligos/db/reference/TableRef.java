@@ -44,7 +44,7 @@ public class TableRef extends SchemaRef {
    * @return
    */
   public TableRef getTable() {
-    return this;
+    return new TableRef(getSchema(), table);
   }
 
   /**

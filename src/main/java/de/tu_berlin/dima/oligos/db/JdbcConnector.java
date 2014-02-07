@@ -15,102 +15,173 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.db;
 
-import java.io.PrintWriter;
+import static com.google.common.base.Predicates.and;
+import static com.google.common.base.Predicates.not;
+import static de.tu_berlin.dima.oligos.util.Predicates.hasChild;
+import static de.tu_berlin.dima.oligos.util.Predicates.hasChildSchema;
+import static de.tu_berlin.dima.oligos.util.Predicates.hasParent;
+import static de.tu_berlin.dima.oligos.util.Predicates.hasParentSchema;
+
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.log4j.Logger;
 import org.apache.commons.dbutils.DbUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.ResultSetHandler;
+import org.apache.commons.dbutils.handlers.AbstractListHandler;
 import org.apache.commons.dbutils.handlers.MapHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
+import org.javatuples.Quartet;
 
-import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
-import org.javatuples.Quartet;
-
-import de.tu_berlin.dima.oligos.Driver;
 import de.tu_berlin.dima.oligos.db.constraints.ForeignKey;
 import de.tu_berlin.dima.oligos.db.handler.jdbc.ForeignKeysHandler;
+import de.tu_berlin.dima.oligos.db.handler.meta.ColumnRefsHandler;
+import de.tu_berlin.dima.oligos.db.handler.meta.SchemaRefsHandler;
+import de.tu_berlin.dima.oligos.db.handler.meta.TableRefsHandler;
+import de.tu_berlin.dima.oligos.db.reference.ColumnRef;
+import de.tu_berlin.dima.oligos.db.reference.EmptyRef;
+import de.tu_berlin.dima.oligos.db.reference.SchemaRef;
+import de.tu_berlin.dima.oligos.db.reference.TableRef;
 import de.tu_berlin.dima.oligos.type.Types;
 import de.tu_berlin.dima.oligos.type.util.TypeInfo;
 import de.tu_berlin.dima.oligos.type.util.parser.Parser;
 
+/**
+ * Wraps a database connection and provides convenience methods for meta data
+ * access and query execution. Every interaction with the database should happen
+ * through this class, rather than using the {@link Connection} directly.
+ * 
+ * @author Christoph Brücke (christoph.bruecke@campus.tu-berlin.de)
+ * @author Marie Hoffmann
+ *
+ */
 public class JdbcConnector {
  
+  private final Connection connection;
+  private final DatabaseMetaData metaData;
 
-  private final String hostname;
-  private final int port;
-  private final String database;
-  public final Driver dbDriver;
+  /**
+   * Returns a new JdbcConnector wrapping the connection and caches the
+   * database meta data from the connection.
+   * @param connection
+   * @throws SQLException if there occurs an error while retrieving the database
+   *  meta data through the connection.
+   * @since 0.3.1
+   */
+  public JdbcConnector(final Connection connection) throws SQLException {
+    this.connection = connection;
+    this.metaData = connection.getMetaData();
+  }
+
+  /******************************************************************************
+   * RELATIONS AND ATTRIBUTES
+   *****************************************************************************/
   
-  private Connection connection;
-  private DatabaseMetaData metaData;
-  private static final Logger LOGGER = Logger.getLogger(JdbcConnector.class);
-  
-  public JdbcConnector(final String hostname, final int port, final String database, final Driver dbDriver) {
-    this.hostname = hostname;
-    this.port = port;
-    this.database = database;
-    this.dbDriver = dbDriver;
-    this.metaData = null;
+  /**
+   * Retrieves all schemas from the current database connection.
+   * @return all schemas for the current connection
+   * @throws SQLException if there occurs an error while retrieving the database 
+   */
+  public Collection<SchemaRef> getSchemas() throws SQLException {
+    AbstractListHandler<SchemaRef> handler = new SchemaRefsHandler();
+    return handler.handle(metaData.getSchemas());
   }
 
-  public String getConnectionString() {
-	  return String.format(this.dbDriver.JDBC_STRING, this.dbDriver.driverName, hostname, port, database);
-  }
-
-  public void connect(final String user, final String pass) throws SQLException {
-  	LOGGER.debug("entering JdbcConnector:connect ..."); 
-	  String cs = getConnectionString();
-	  //DriverManager.setLogWriter( new PrintWriter(System.out) );
-	  connection = DriverManager.getConnection(cs, user, pass);
-	  metaData = connection.getMetaData();
-	  LOGGER.debug("leaving JdbcConnector:connect"); 
-	}
-
-  public void close() throws SQLException {
-	  connection.close();
-  }
-
-  public Collection<String> getSchemas() throws SQLException {
-    List<String> schemas = Lists.newArrayList();
-    ResultSet result = metaData.getSchemas();
-    while (result.next()) {
-      String schema = result.getString("TABLE_SCHEM");
-      schemas.add(schema);
-    }
-    DbUtils.close(result);
-    return schemas;
-  }
-
+  /**
+   * @deprecated As of 0.3.1, replaced by {@link #getTables()} and
+   * {@link #getTables(SchemaRef)}.
+   * @param schema
+   * @return
+   * @throws SQLException
+   */
+  @Deprecated
   public Collection<String> getTables(final String schema) throws SQLException {
-  	LOGGER.debug("entering JdbcConnector:getTables ..."); 
-	  ResultSet result = metaData.getTables(null, schema, null, null);
+    ResultSet result = metaData.getTables(null, schema, null, null);
     List<String> tables = Lists.newArrayList();
     while (result.next()) {
       String table = result.getString("TABLE_NAME");
       tables.add(table);
     }
     DbUtils.close(result);
-    LOGGER.debug("leaving JdbcConnector:getTables ..."); 
-	  return tables;
+    return tables;
   }
 
+  /**
+   * Retrieves all tables from the current database connection.
+   * @return all tables from the current connection
+   * @throws SQLException if a database access error occurs
+   * @since 0.3.1
+   */
+  public Collection<TableRef> getTables() throws SQLException {
+    // I know ugly as f**k but that's the how jdbc rolls
+    // essentially uses an EmptyRef object that always returns null
+    return getTables(new EmptyRef());
+  }
+
+  /**
+   * Retrieves all tables of the schema from the current connection.
+   * @param schema 
+   *  The schema reference of the tables
+   * @return 
+   *  all tables of the schema
+   * @throws SQLException if a database access error occurs
+   * @since 0.3.1
+   */
+  public Collection<TableRef> getTables(
+      final SchemaRef schema) throws SQLException {
+    String catalog = null;
+    String schemaPattern = schema.getSchemaName();
+    String tablePattern = null;
+    String[] types = null;
+    AbstractListHandler<TableRef> handler = new TableRefsHandler();
+    ResultSet rs = metaData.getTables(catalog, schemaPattern, tablePattern, types);
+    return handler.handle(rs);
+  }
+
+  /**
+   * Retrieves all columns from the current database connection.
+   * @return all columns of all schemas and tables
+   * @throws SQLException if a database access error occurs
+   */
+  public Collection<ColumnRef> getColumns() throws SQLException {
+    return getColumns(new EmptyRef());
+  }
+
+  /**
+   * Retrieves all columns of the schema from the current database connection.
+   * @param schema The schema reference to search the columns for
+   * @return all columns of the schema
+   * @throws SQLException if a database access error occurs
+   */
+  public Collection<ColumnRef> getColumns(final SchemaRef schema)
+      throws SQLException {
+    ResultSetHandler<List<ColumnRef>> handler = new ColumnRefsHandler();
+    String schemaNamePattern = schema.getSchemaName();
+    ResultSet rs =
+        metaData.getColumns(null, schemaNamePattern, null, null);
+    return handler.handle(rs);
+  }
+
+  /**
+   * @deprecated As of version 0.3.1, replaced by {@link #getColumns(TableRef)}
+   * @param schema
+   * @param table
+   * @return
+   * @throws SQLException
+   */
+  @Deprecated
   public Collection<String> getColumns(final String schema, final String table) throws SQLException {
-  	LOGGER.debug("entering JdbcConnector:getColumns ..."); 
     ResultSet result = metaData.getColumns(null, schema, table, null);
     List<String> columns = Lists.newArrayList();
     while (result.next()) {
@@ -118,23 +189,44 @@ public class JdbcConnector {
       columns.add(column);
     }
     DbUtils.close(result);
-    LOGGER.debug("leaving JdbcConnector:getColumns"); 
     return columns;
   }
 
   /**
-   * Use 
-   * {@link JdbcConnector#getForeignKeys(String)},
-   * {@link JdbcConnector#getImportedKeys(String, String)}, or
-   * {@link JdbcConnector#getExportedKeys(String, String)} instead.
+   * Retrieves all columns of the table from the current database connection.
+   * @param table The table reference to search the columns for
+   * @return all columns of the table
+   * @throws SQLException if a database access error occurs
+   */
+  public Collection<ColumnRef> getColumns(final TableRef table)
+      throws SQLException {
+    String catalog = null;
+    String schemaPattern = null;
+    String columnNamePattern = null;
+    AbstractListHandler<ColumnRef> handler = new ColumnRefsHandler();
+    ResultSet rs = metaData.getColumns(
+        catalog, schemaPattern, table.getTableName(), columnNamePattern);
+    return handler.handle(rs);
+  }
+
+  /******************************************************************************
+   * REFERENCES
+   *****************************************************************************/
+
+  /**
+   * @deprecated As of 0.3.1, replaced by
+   *             {@link #getForeignKeys(SchemaRef))},
+   *             {@link #getCrossReferences(SchemaRef, SchemaRef)},
+   *             {@link #getImportedKeys(SchemaRef))}, or
+   *             {@link #getExportedKeys(SchemaRef))}
    * @param schema
    * @return
    * @throws SQLException
    */
   @Deprecated
   public Set<Quartet<String, String, String, String>> getReferences(final String schema) throws SQLException{
-  	LOGGER.error("JdbcConnector:getReferences deprecated!"); 
-    Set<Quartet<String, String, String, String>> references = Sets.newHashSet();
+      LOGGER.error("JdbcConnector:getReferences deprecated!"); 
+      Set<Quartet<String, String, String, String>> references = Sets.newHashSet();
 	  ResultSet result;
 	  Collection<String> tables = this.getTables(schema);
 	  for (String table: tables){
@@ -152,87 +244,304 @@ public class JdbcConnector {
   }
 
   /**
-   * Retrieves all foreign keys from the given schema.
-   * @param schema
-   * @return A <code>Set</code> containing no, one, or more <code>ForeignKey</code>s.
-   * @throws SQLException
+   * Retrieves all foreign keys from the current database connection.
+   * @return all foreign keys
+   * @throws SQLException if a database access error occurs
+   * @since 0.3.1
    */
-  public Set<ForeignKey> getForeignKeys(final String schema) throws SQLException {
-    Preconditions.checkArgument(schema != null && !schema.isEmpty());
+  public Set<ForeignKey> getForeignKeys() throws SQLException {
+    return getCrossReferences();
+  }
+
+  /**
+   * Retrieves all foreign keys that are either imported, exported, or contained 
+   * by the schema. That is all foreign keys, where the schema is either the
+   * parent schema, the child schema, or both.
+   * @return 
+   *  all foreign keys for the schema
+   * @throws SQLException if a database access error occurs
+   * @since 0.3.1
+   * @see {@link ForeignKey}
+   */
+  public Set<ForeignKey> getForeignKeys(
+      final SchemaRef schema) throws SQLException {
     Set<ForeignKey> fKeys = Sets.newHashSet();
-    for (String table : getTables(schema)) {
-      ResultSet result = metaData.getExportedKeys(null, schema, table);
-      ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler();
-      Set<ForeignKey> fks = handler.handle(result);
+    fKeys.addAll(getImportedKeys(schema));
+    fKeys.addAll(getExportedKeys(schema));
+    fKeys.addAll(getCrossReferences(schema, schema));
+    return fKeys;
+  }
+
+  /**
+   * Retrieves all foreign keys that are either imported, exported or contained
+   * by the given table. That is all foreign keys, where the given table is
+   * either the parent table, the child table, or both.
+   * @return
+   *  all foreign keys for the table
+   * @throws SQLException if a database access error occurs
+   * @since 0.3.1
+   * @see {@link ForeignKey}
+   */
+  public Set<ForeignKey> getForeignKeys(
+      final TableRef table) throws SQLException {
+    Set<ForeignKey> fKeys = Sets.newHashSet();
+    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler();
+    ResultSet rs = 
+        metaData.getImportedKeys(null, table.getSchemaName(), table.getTableName());
+    fKeys.addAll(handler.handle(rs));
+    rs =
+        metaData.getExportedKeys(null, table.getSchemaName(), table.getTableName());
+    fKeys.addAll(handler.handle(rs));
+    return fKeys;
+  }
+
+  /**
+   * Retrieves all foreign key relationships no matter the schema or table they
+   * are in.
+   * @return
+   * @throws SQLException if a database access error occurs
+   * @since 0.3.1
+   * @see {@link ForeignKey}, {@link #getForeignKeys()}
+   */
+  public Set<ForeignKey> getCrossReferences() throws SQLException {
+    // TODO increase performance
+    Set<ForeignKey> fKeys = Sets.newHashSet();
+    TableRef[] tables = getTables().toArray(new TableRef[1]);
+    int length = tables.length;
+    for (int m = 0; m < length; m++) {
+      for (int n = m; n < length; n++) {
+        fKeys.addAll(getCrossReferences(tables[m], tables[n]));
+      }
+    }
+    return fKeys;
+  }
+
+  /**
+   * Retrieves all foreign keys / references between the first and the second
+   * schema.
+   * @param firstSchema The first schema
+   * @param secondSchema The second schema
+   * @return all foreign keys between the first and the second schema
+   * @throws SQLException if a database access error occurs
+   * @since 0.3.1
+   * @see {@link ForeignKey}
+   */
+  public Set<ForeignKey> getCrossReferences(
+      final SchemaRef firstSchema,
+      final SchemaRef secondSchema) throws SQLException {
+    Set<ForeignKey> fKeys = Sets.newHashSet();
+    Collection<TableRef> firstTables = getTables(firstSchema);
+    Collection<TableRef> secondTables = getTables(secondSchema);
+    for (TableRef firstTab : firstTables) {
+      for (TableRef secondTab : secondTables) {
+        fKeys.addAll(getCrossReferences(firstTab, secondTab));
+      }
+    }
+    return fKeys;
+  }
+
+  /**
+   * Retrieves all foreign keys / references between the first and the second
+   * table.
+   * @param firstTable The first table
+   * @param secondTable The second table
+   * @return all foreign keys between the first and the second table
+   * @throws SQLException if a database access error occurs
+   * @since 0.3.1
+   * @see {@link ForeignKey}
+   */
+  public Set<ForeignKey> getCrossReferences(
+      final TableRef firstTable,
+      final TableRef secondTable) throws SQLException {
+    Set<ForeignKey> fKeys = Sets.newHashSet();
+    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler();
+    String firstS = firstTable.getSchemaName();
+    String firstT = firstTable.getTableName();
+    String secondS = secondTable.getSchemaName();
+    String secondT = secondTable.getTableName();
+    ResultSet rs1 =
+        metaData.getCrossReference(null, firstS, firstT, null, secondS, secondT);
+    ResultSet rs2 =
+        metaData.getCrossReference(null, secondS, secondT, null, firstS, firstT);
+    fKeys.addAll(handler.handle(rs1));
+    fKeys.addAll(handler.handle(rs2));
+    return fKeys;
+  }
+
+  /**
+   * Retrieves all foreign keys imported by the schema, i.e. foreign keys, where
+   * the child is in the schema and the child is outside of the schema.
+   * @param schema The child schema
+   * @return all foreign keys imported by the schema
+   * @throws SQLException
+   * @since 0.3.1
+   * @see {@link ForeignKey}
+   */
+  public Set<ForeignKey> getImportedKeys(
+      final SchemaRef schema) throws SQLException {
+    Set<ForeignKey> fKeys = Sets.newHashSet();
+    Predicate<ResultSet> pred =
+        and(hasChildSchema(schema), not(hasParentSchema(schema)));
+    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler(pred);
+    Collection<TableRef> tables = getTables(schema);
+    for (TableRef table : tables) {
+      ResultSet rs = metaData.getImportedKeys(
+          null, schema.getSchemaName(), table.getTableName());
+      Set<ForeignKey> fks = handler.handle(rs);
       fKeys.addAll(fks);
     }
     return fKeys;
   }
 
   /**
-   * Retrieves all keys imported by the given table. That is all tables that are
-   * referenced by the given schema and table.
-   * @param schema Name of the schema
-   * @param table Name of the table
-   * @return A <code>Set</code> of all <code>ForeignKey</code>s, where the given
-   * table is the <em>child</em> table.
+   * Retrieves all foreign keys imported by the table, i.e. foreign keys, where
+   * the table is the child but not the parent.
+   * @param table The child table
+   * @return all foreign keys imported by the table
    * @throws SQLException
+   * @since 0.3.1
+   * @see {@link ForeignKey}
    */
-  public Set<ForeignKey> getImportedKeys(final String schema, final String table)
-    throws SQLException {
-    Preconditions.checkArgument(schema != null && table != null);
-    Preconditions.checkArgument(!schema.isEmpty() && !table.isEmpty());
-    ResultSet result = metaData.getImportedKeys(null, schema, table);
-    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler();
-    return handler.handle(result);
+  public Set<ForeignKey> getImportedKeys(
+      final TableRef table) throws SQLException {
+    Predicate<ResultSet> pred = and(hasChild(table), not(hasParent(table)));
+    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler(pred);
+    ResultSet rs = metaData.getImportedKeys(
+        null, table.getSchemaName(), table.getTableName());
+    return handler.handle(rs);
   }
 
   /**
-   * Retrieves all keys exported by the given table. That is all tables that are 
-   * referencing the given table.
-   * @param schema Name of the schema
-   * @param table Name of the table
-   * @return A <code>Set</code> of all <code>ForeignKey</code>s, where the given
-   * table is the <em>parent</em> table.
+   * Retrieves all foreign keys exported by the schema, i.e. foreign keys, where
+   * the parent is in the schema and the child is outside of the schema.
+   * @param table The parent schema
+   * @return all foreign keys exported by the schema
+   * @throws SQLException
+   * @since 0.3.1
+   * @see {@link ForeignKey}
+   */
+  public Set<ForeignKey> getExportedKeys(
+      final SchemaRef schema) throws SQLException {
+    Set<ForeignKey> fKeys = Sets.newHashSet();
+    Predicate<ResultSet> pred =
+        and(hasParentSchema(schema), not(hasChildSchema(schema)));
+    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler(pred);
+    Collection<TableRef> tables = getTables(schema);
+    for (TableRef table : tables) {
+      ResultSet rs = metaData.getExportedKeys(
+          null, schema.getSchemaName(), table.getTableName());
+      Set<ForeignKey> fks = handler.handle(rs);
+      fKeys.addAll(fks);
+    }
+    return fKeys;
+  }
+
+  /**
+   * Retrieves all foreign keys exported by the table, i.e. foreign keys, where
+   * the table is the parent but not the child.
+   * @param table The parent table
+   * @return all foreign keys exported by the table
+   * @throws SQLException
+   * @since 0.3.1
+   * @see {@link ForeignKey}
+   */
+  public Set<ForeignKey> getExportedKeys(final TableRef table)
+      throws SQLException {
+    Predicate<ResultSet> pred = and(hasParent(table), not(hasChild(table)));
+    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler(pred);
+    ResultSet rs = metaData.getExportedKeys(
+        null, table.getSchemaName(), table.getTableName());
+    return handler.handle(rs);
+  }
+
+  /**
+   * @deprecated As of version 0.3.1, replaced by {@link #hasSchema(SchemaRef)}.
+   * @param schema
+   * @return
    * @throws SQLException
    */
-  public Set<ForeignKey> getExportedKeys(final String schema, final String table)
-    throws SQLException {
-    Preconditions.checkArgument(schema != null && table != null);
-    Preconditions.checkArgument(!schema.isEmpty() && !table.isEmpty());
-    ResultSet result = metaData.getExportedKeys(null, schema, table);
-    ResultSetHandler<Set<ForeignKey>> handler = new ForeignKeysHandler();
-    return handler.handle(result);
-  }
-
+  @Deprecated
   public boolean checkSchema(final String schema) throws SQLException {
     ResultSet result = metaData.getSchemas(null, schema);
-    if (result.next()) {
-      return true;
-    } else {
-      return false;
-    }
+    return result.next();
   }
 
+  /**
+   * Checks whether the schema exists in the current database connection or not.
+   * @param schema The schema to check for existence
+   * @return <code>true</code> if schema exists, <code>false</code> otherwise
+   * @throws SQLException if a database error occurs
+   */
+  public boolean hasSchema(final SchemaRef schema) throws SQLException {
+    ResultSet result = metaData.getSchemas(null, schema.getSchemaName());
+    return result.next();
+  }
+
+  /**
+   * @deprecated As of version 0.3.1, replaced by {@link #hasTable(TableRef)}
+   * @param schema
+   * @param table
+   * @return
+   * @throws SQLException
+   */
+  @Deprecated
   public boolean checkTable(final String schema, final String table) throws SQLException {
     ResultSet result = metaData.getTables(null, schema, table, null);
-    if (result.next()) {
-      return true;
-    } else {
-      return false;
-    }
+    return result.next();
   }
 
+  /**
+   * Checks whether the table exists in the current database connection or not.
+   * @param table The table to check for existence
+   * @return <code>true</code> if table exists, <code>false</code> otherwise
+   * @throws SQLException if a database error occurs
+   */
+  public boolean hasTable(final TableRef table) throws SQLException {
+    ResultSet result = metaData.getTables(
+        null, table.getSchemaName(), table.getTableName(), null);
+    return result.next();
+  }
+
+  /**
+   * @deprecated As of version 0.3.1, replaced by {@link hasColumn(ColumnRef)}
+   * @param schema
+   * @param table
+   * @param column
+   * @return
+   * @throws SQLException
+   */
   public boolean checkColumn(final String schema, final String table, final String column) 
       throws SQLException {
     ResultSet result = metaData.getColumns(null, schema, table, column);
-    if (result.next()) {
-      return true;
-    } else {
-      return false;
-    }
+    return result.next();
   }
+
+  /**
+   * Checks whether the column exists in the current database connection or not.
+   * @param column The column to check for existence
+   * @return <code>true</code> if column exists, <code>false</code> otherwise
+   * @throws SQLException if a database error occurs
+   */
+  public boolean hasColumn(final ColumnRef column) throws SQLException {
+    ResultSet result = metaData.getColumns(
+        null,
+        column.getSchemaName(),
+        column.getTableName(),
+        column.getColumnName());
+    return result.next();
+  }
+
+  /******************************************************************************
+   * QUERY EXECUTION
+   *****************************************************************************/
   
+  /**
+   * @deprecated As of 0.3.1, public methods should not return <code>ResultSet</code>.
+   * @param query
+   * @param parameters
+   * @return
+   * @throws SQLException
+   */
   @Deprecated
   public ResultSet executeQuery(final String query, final Object... parameters) throws SQLException {
     PreparedStatement stmt = connection.prepareStatement(query);
@@ -247,10 +556,9 @@ public class JdbcConnector {
       final String query,
       final String columnName,
       final Object... parameters) throws SQLException {
-  	ResultSetHandler<T> handler = new ScalarHandler<T>(columnName);
+    ResultSetHandler<T> handler = new ScalarHandler<T>(columnName);
     QueryRunner runner = new QueryRunner();
-    T res = runner.query(connection, query, handler, parameters);
-    return res;
+    return runner.query(connection, query, handler, parameters);
   }
   
   /*
@@ -309,7 +617,7 @@ public class JdbcConnector {
       final Parser<T> parser,
       final Object...parameters) throws SQLException {
   	ResultSetHandler<Map<T, Long>> handler = new HistogramHandler<T>(keyColumnName, valueColumnName, parser);
-  	QueryRunner runner = new QueryRunner();
+    QueryRunner runner = new QueryRunner();
     Map<T, Long> ret = runner.query(connection, query, handler, parameters);
     return ret;
   }
@@ -318,7 +626,7 @@ public class JdbcConnector {
       final String schema,
       final String table,
       final String column) throws SQLException {
-  	ResultSet result = metaData.getColumns(null, schema, table, column);
+    ResultSet result = metaData.getColumns(null, schema, table, column);
     if (result.next()){
     String typeName = (String) result.getString("TYPE_NAME");
     int length;

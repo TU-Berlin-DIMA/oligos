@@ -44,7 +44,7 @@ public class ColumnRef extends TableRef {
    * @return
    */
   public ColumnRef getColumn() {
-    return this;
+    return new ColumnRef(getTable(), column);
   }
 
   /**
