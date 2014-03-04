@@ -16,3 +16,7 @@ target/
 
 # intelliJ IDE specific #
 *.idea
+*.iml
+
+# auxillary files
+derby.log
