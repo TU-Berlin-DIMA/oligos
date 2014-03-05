@@ -1,61 +1,82 @@
-Oligios
-=======
+# Summary
 
-Prerequisites
--------------
+Oligos is a data profiler. It reads meta information from database management systems and creates a data generator specification. Since it is part of the [Myriad Toolkit]() the generated data generator specification can be used by _Myriad_ to create data generators that generate data similar to the original data.
 
-1.  Download and extract [IBM DB2 Driver for JDBC and SQLJ](http://www-01.ibm.com/support/docview.wss?uid=swg21363866)
+In order to aid query execution all of the current database management systems (e.g., Oracle DB, IBM DB2) do some kind of bookkeeping, that is storing data about the data (meta data) in a catalog. This meta data consists of structural information, such as column types or relations (key - foreign key), and statistical information, such as one dimensional histograms to capture the distribution of columns. _Oligos_ uses the catalog data to create a data generator specification. For the data generator specification _Oligos_ uses the XML language specified by the [_Myriad Toolkit_](https://github.com/TU-Berlin-DIMA/myriad-toolkit/wiki/XML-Specification-Reference-Manual).
 
-1.  Maven 3
+After successfully executing _Oligos_ the data generator specification can be used to create a data generator. Please see the guide on how to use _Myriad_ with _Oligos_ in the [_Myriad Wiki_](https://github.com/TU-Berlin-DIMA/myriad-toolkit/wiki/Using-Oligos-Guide).
 
-1.  Oracle-JDK 6
+# Organisation
 
+_Oligos_ is an application written in Java that uses Maven as a build tool. Thus the typical Maven project structure is used. The specific project structure is as follows:
 
-Building Oligos
----------------
+    .
+    ├── AUTHORS
+    ├── CONTRIBUTE.md
+    ├── INSTALL.md
+    ├── LICENSE
+    ├── NOTICE
+    ├── README.md
 
-1.  Checkout the code
-    
-    `git pull git@bitbucket.org:carabolic/oligos.git`
+The `AUTHORS` and the `NOTICE` file lists all the _Oligos_ contributors and other used open source projects respectively. The `CONTRIBUTE` file describes how to contribute to the _Oligos_ project and  `INSTALL` explains how to install _Oligos_. `LICENSE` contains detailed license information and `README` is the current document.
 
-1.  Change to the Oligos directory
+    ├── pom.xml
+    ├── run.sh
 
-    `cd oligos`
+The `pom.xml` file is the maven build file. The `run.sh` is a helper script for using the compiled binaries.
 
-1.  Create a "fat-jar" including Oligos and all dependencies (excluding JDBC)
+    ├── src
+    │   ├── main
+    │   │   └── java
+    │   └── test
+    │       ├── java
+    │       └── resources
 
-    `mvn assembly:assembly`
+The `src/` folder contains all the source files needed to build and test _Oligos_. The `src/main/java` folder contains the actual _Oligos_ source code. Whereas `src/test/java` folder contains the test code for _Oligos_. All test files are based on [JUnit 4]() and `src/test/resources` folder contains the resources needed to run the unit tests.
 
+# Prerequisites
 
-Running Oligos
---------------
+_Oligos_ is written in Java and uses [JDBC](http://www.oracle.com/technetwork/java/javase/jdbc/index.html) to connect to the database. To run or build _Oligos_ the following things are needed:
 
-1.  Configure the run.sh file in the root folder
+* Apache Maven 3 (building only)
+* Java Runtime >= 1.6
+* An appropriate JDBC driver for database
 
-1.  Execute run.sh with the path to your JDBC driver and the schema
+# Installation and Usage
 
-    `./run.sh PATH/TO/JDBC-DRIVER.jar 'SCHEMA (TABLE (COLUMN))'`
+1. Download the latest stable version from [GitHub](https://github.com/TU-Berlin-DIMA/oligos/releases) and unpack it or checkout the latest version.
 
-Developing Oligos
------------------
+2. Change to the Oligos directory
 
-In order to ease the development and debugging of Oligos, the jdbc drivers are
-included in the maven package description (pom.xml). To use them just type the
-following:
+     ```Shell
+     carabolic:~% cd oligos
+     ```
 
-1.  Change to the path were "db2jcc4.jar" and "db2jcc_license_cu.jar" are stored
+3.  Create a "fat-jar" including Oligos and all dependencies (excluding the jdbc driver)
 
-1.  Install the jdbc driver with
+     ```Shell
+     carabolic:~/oligos% mvn assembly:assembly
+     ```
 
-	```
-    mvn install:install-file -Dfile=db2jcc4.jar -DgroupId=com.ibm.db2 \
-	-DartifactId=jdbc -Dversion=4.0 -Dpackaging=jar
+4. Configure the `run.sh` file in the root folder
+
+5. Execute `run.sh` with the path to your JDBC driver and the schema
+
+    ```Shell
+    carabolic:~/oligos% ./run.sh <PATH/TO/JDBC-DRIVER.jar> '<SCHEMA> (<TABLE> (<COLUMN>))'
     ```
 
-1.  Install the jdbc license with
+# Example
 
-	```
-    mvn install:install-file -Dfile=db2jcc_license_cu.jar -DgroupId=com.ibm.db2 \
-	-DartifactId=jdbc_license -Dversion=4.0 -Dpackaging=jar
-    ```
+Assuming your the jdbc driver for your database is located under `/tmp/my-jdbc.jar` and your database has a `ORG` schema with a `STUDENT` and a `COURSE` table, the command to profile the `ID`, `FIRSTNAME` and `LASTNAME` column from the `STUDENT` table and the whole `COURSE` table is:
 
+`./run.sh /tmp/my-jdbc.jar 'ORG (STUDENT (ID, FIRSTNAME, LASTNAME, AGE), COURSE)'`
+
+# License
+
+_Oligos_ is licensed under the Apache Software License Version 2.0. For more information please consult the LICENSE file.
+
+# Contact
+
+* [Mailing list](mailto:dima-myriad.toolkit@lists.tu-berlin.de)
+* [Project Wiki](https://github.com/TU-Berlin-DIMA/oligos/wiki)
