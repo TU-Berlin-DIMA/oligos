@@ -19,9 +19,11 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Map;
 
+import org.apache.commons.math.util.MultidimensionalCounter.Iterator;
 import org.apache.log4j.Logger;
 
 import com.google.common.collect.Maps;
+
 import de.tu_berlin.dima.oligos.DenseSchema;
 import de.tu_berlin.dima.oligos.SparseSchema;
 import de.tu_berlin.dima.oligos.type.util.ColumnId;

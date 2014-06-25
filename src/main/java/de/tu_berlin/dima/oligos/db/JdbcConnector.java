@@ -225,7 +225,8 @@ public class JdbcConnector {
    */
   @Deprecated
   public Set<Quartet<String, String, String, String>> getReferences(final String schema) throws SQLException{
-	  Set<Quartet<String, String, String, String>> references = Sets.newHashSet();
+      LOGGER.error("JdbcConnector:getReferences deprecated!"); 
+      Set<Quartet<String, String, String, String>> references = Sets.newHashSet();
 	  ResultSet result;
 	  Collection<String> tables = this.getTables(schema);
 	  for (String table: tables){

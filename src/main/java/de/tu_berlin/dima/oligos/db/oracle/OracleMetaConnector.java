@@ -74,6 +74,7 @@ public class OracleMetaConnector implements MetaConnector {
 
 	@Override
 	public boolean hasStatistics(String schema, String table, String column) throws SQLException {
+		//System.out.println("Domain query for <schema> = " + schema + ", <table> = " + table +", <column> = " + column);
 		BigDecimal aux = connector.scalarQuery(DOMAIN_QUERY, "NUM_DISTINCT", schema, table, column);
 		Long card = aux.longValueExact();
 		if (card != null) {
