@@ -15,35 +15,10 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos;
 
-import java.io.File;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.Date;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Time;
-import java.sql.Timestamp;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-
 import de.tu_berlin.dima.oligos.cli.CommandLineInterface;
-import de.tu_berlin.dima.oligos.db.ColumnConnector;
-import de.tu_berlin.dima.oligos.db.DbUtils;
-import de.tu_berlin.dima.oligos.db.JdbcConnector;
-import de.tu_berlin.dima.oligos.db.MetaConnector;
-import de.tu_berlin.dima.oligos.db.SchemaConnector;
-import de.tu_berlin.dima.oligos.db.TableConnector;
+import de.tu_berlin.dima.oligos.db.*;
 import de.tu_berlin.dima.oligos.db.db2.Db2ColumnConnector;
 import de.tu_berlin.dima.oligos.db.db2.Db2MetaConnector;
 import de.tu_berlin.dima.oligos.db.db2.Db2SchemaConnector;
@@ -69,24 +44,21 @@ import de.tu_berlin.dima.oligos.type.util.operator.StringOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.DateOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.TimeOperator;
 import de.tu_berlin.dima.oligos.type.util.operator.date.TimestampOperator;
-import de.tu_berlin.dima.oligos.type.util.operator.numerical.BigDecimalOperator;
-import de.tu_berlin.dima.oligos.type.util.operator.numerical.DoubleOperator;
-import de.tu_berlin.dima.oligos.type.util.operator.numerical.FloatOperator;
-import de.tu_berlin.dima.oligos.type.util.operator.numerical.IntegerOperator;
-import de.tu_berlin.dima.oligos.type.util.operator.numerical.LongOperator;
-import de.tu_berlin.dima.oligos.type.util.operator.numerical.ShortOperator;
-import de.tu_berlin.dima.oligos.type.util.parser.CharParser;
-import de.tu_berlin.dima.oligos.type.util.parser.DateParser;
-import de.tu_berlin.dima.oligos.type.util.parser.BigDecimalParser;
-import de.tu_berlin.dima.oligos.type.util.parser.DoubleParser;
-import de.tu_berlin.dima.oligos.type.util.parser.FloatParser;
-import de.tu_berlin.dima.oligos.type.util.parser.IntegerParser;
-import de.tu_berlin.dima.oligos.type.util.parser.LongParser;
-import de.tu_berlin.dima.oligos.type.util.parser.Parser;
-import de.tu_berlin.dima.oligos.type.util.parser.ShortParser;
-import de.tu_berlin.dima.oligos.type.util.parser.StringParser;
-import de.tu_berlin.dima.oligos.type.util.parser.TimeParser;
-import de.tu_berlin.dima.oligos.type.util.parser.TimestampParser;
+import de.tu_berlin.dima.oligos.type.util.operator.numerical.*;
+import de.tu_berlin.dima.oligos.type.util.parser.*;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+
+import java.io.File;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.sql.*;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 
 public class Oligos {
 
@@ -100,7 +72,7 @@ public class Oligos {
     String column = columnId.getColumn();
     return getProfiler(schema, table, column, type, jdbcConnector, metaConnector);
   }
-  
+
 //TODO
   public static ColumnProfiler<?> getProfiler(final String schema, final  String table
       , final String column, final TypeInfo type, final JdbcConnector jdbcConnector
@@ -248,7 +220,7 @@ public class Oligos {
   	BasicConfigurator.configure();
   
   	// TODO create cmdline option for setting logger level 
-    LOGGER.setLevel(Level.INFO);
+    LOGGER.setLevel(Level.ALL);
   	CommandLineInterface cli = new CommandLineInterface(args);
     try {
       // TODO hard exit if the parsing fails!
@@ -259,12 +231,9 @@ public class Oligos {
       
       Properties props = new Properties();
       props.setProperty("user", cli.getUsername());
-      props.setProperty("password", cli.getPassword());      
-      Connection connection = DriverManager.getConnection(
-          cli.getConnectionString(), props);
+      props.setProperty("password", cli.getPassword());
+      Connection connection = DriverManager.getConnection(cli.getConnectionString(), props);
       JdbcConnector jdbcConnector = new JdbcConnector(connection);
-//      JdbcConnector jdbcConnector = cli.getJdbcConnector();
-//      jdbcConnector.connect(cli.getUsername(), cli.getPassword());
       MetaConnector metaConnector = null;
       Driver dbDriver = cli.dbDriver;
       switch (dbDriver.driverName){

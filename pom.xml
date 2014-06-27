@@ -39,7 +39,7 @@
 		<groupId>com.ibm.db2</groupId>
 		<artifactId>jdbc</artifactId>
 		<version>4.0</version>
-		<scope>provided</scope>
+		<!--<scope>provided</scope>-->
 	</dependency>
 	<!--<dependency>
 		<groupId>com.ibm.db2</groupId>

@@ -15,19 +15,13 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.cli;
 
-import java.io.File;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.cli.PosixParser;
-import org.apache.commons.lang3.StringUtils;
-
 import de.tu_berlin.dima.oligos.Driver;
 import de.tu_berlin.dima.oligos.Oligos;
 import de.tu_berlin.dima.oligos.SparseSchema;
+import org.apache.commons.cli.*;
+import org.apache.commons.lang3.StringUtils;
+
+import java.io.File;
 
 public class CommandLineInterface {
 
@@ -35,7 +29,7 @@ public class CommandLineInterface {
       .addOption("u", "username", true, "Username for database connection")
       .addOption("p", "password", true, "Password for database connection")
       .addOption("h", "hostname", true, "Connect to given host")
-      .addOption("j", "jdbc", true, "Database-specific driver: 'db2' or 'ora'" )
+      .addOption("j", "jdbc", true, "Database-specific driver: 'db2' or 'oracle'" )
       .addOption("D", "database", true, "Use given database")
       .addOption("P", "port", true, "Database port")
       .addOption("o", "output", true, "Path to the output folder")
@@ -95,10 +89,6 @@ public class CommandLineInterface {
     }
   }
 
-//  public JdbcConnector getJdbcConnector() {
-//    return jdbcConnector;
-//  }
-
   public String getHostname() {
     return hostname;
   }
@@ -112,7 +102,8 @@ public class CommandLineInterface {
   }
 
   public String getConnectionString() {
-    return dbDriver.JDBC_STRING;
+    String conString = dbDriver.JDBC_STRING;
+    return String.format(conString, hostname, port, database);
   }
 
   public String getUsername() {

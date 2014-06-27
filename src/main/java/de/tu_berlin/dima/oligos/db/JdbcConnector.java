@@ -38,6 +38,7 @@ import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.commons.dbutils.handlers.AbstractListHandler;
 import org.apache.commons.dbutils.handlers.MapHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
+import org.apache.log4j.Logger;
 import org.javatuples.Quartet;
 
 import com.google.common.base.Predicate;
@@ -67,6 +68,8 @@ import de.tu_berlin.dima.oligos.type.util.parser.Parser;
  *
  */
 public class JdbcConnector {
+
+  private static final Logger LOGGER = Logger.getLogger(JdbcConnector.class);
  
   private final Connection connection;
   private final DatabaseMetaData metaData;
@@ -225,8 +228,8 @@ public class JdbcConnector {
    */
   @Deprecated
   public Set<Quartet<String, String, String, String>> getReferences(final String schema) throws SQLException{
-      LOGGER.error("JdbcConnector:getReferences deprecated!"); 
-      Set<Quartet<String, String, String, String>> references = Sets.newHashSet();
+    LOGGER.error("JdbcConnector:getReferences deprecated!");
+    Set<Quartet<String, String, String, String>> references = Sets.newHashSet();
 	  ResultSet result;
 	  Collection<String> tables = this.getTables(schema);
 	  for (String table: tables){

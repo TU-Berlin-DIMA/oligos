@@ -26,10 +26,10 @@ public class Driver {
 		this.driverName = DriverName.valueOf(driverNameStr);
 		switch (this.driverName){
 		case db2:
-			this.JDBC_STRING = "jdbc:%s://%s:%d/%s";
+			this.JDBC_STRING = "jdbc:db2://%s:%d/%s";
 			break;
 		case oracle:
-			this.JDBC_STRING = "jdbc:%s:thin:@%s:%d/%s";
+			this.JDBC_STRING = "jdbc:oracle:thin:@%s:%d/%s";
 			break;
 		}
 	}
