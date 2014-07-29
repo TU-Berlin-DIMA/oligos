@@ -87,6 +87,16 @@ public class JdbcConnector {
     this.metaData = connection.getMetaData();
   }
 
+  /**
+   * Returns the underlying JDBC Connection. Changes made to the returned
+   * connection also affect this JdbcConnector.
+   * @return Underlying JDBC {@link java.sql.Connection}
+   * @since 0.3.1
+   */
+  public Connection getConnection() {
+    return connection;
+  }
+
   /******************************************************************************
    * RELATIONS AND ATTRIBUTES
    *****************************************************************************/
@@ -560,7 +570,10 @@ public class JdbcConnector {
       final String columnName,
       final Object... parameters) throws SQLException {
     ResultSetHandler<T> handler = new ScalarHandler<T>(columnName);
-    QueryRunner runner = new QueryRunner();
+    // FIXME remove flag from call to QueryRunner constructor
+    // temporary fix to circumvent DBUTILS-117
+    // see https://issues.apache.org/jira/browse/DBUTILS-117
+    QueryRunner runner = new QueryRunner(true);
     return runner.query(connection, query, handler, parameters);
   }
   
