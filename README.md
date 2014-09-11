@@ -72,8 +72,9 @@ to the database. To run or build _Oligos_ the following things are needed:
 
 # Installation and Usage
 
-1. Download the latest stable version from [GitHub](https://github.com/TU-
-Berlin-DIMA/oligos/releases) and unpack it or checkout the latest version.
+1. Download the latest stable version from
+[GitHub](https://github.com/TU-Berlin-DIMA/oligos/releases) and unpack it or
+checkout the latest version.
 
 2. Change to the Oligos directory
 
