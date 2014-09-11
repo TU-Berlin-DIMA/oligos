@@ -23,10 +23,7 @@ import de.tu_berlin.dima.oligos.db.db2.Db2ColumnConnector;
 import de.tu_berlin.dima.oligos.db.db2.Db2MetaConnector;
 import de.tu_berlin.dima.oligos.db.db2.Db2SchemaConnector;
 import de.tu_berlin.dima.oligos.db.db2.Db2TableConnector;
-import de.tu_berlin.dima.oligos.db.oracle.OracleColumnConnector;
-import de.tu_berlin.dima.oligos.db.oracle.OracleMetaConnector;
-import de.tu_berlin.dima.oligos.db.oracle.OracleSchemaConnector;
-import de.tu_berlin.dima.oligos.db.oracle.OracleTableConnector;
+import de.tu_berlin.dima.oligos.db.oracle.*;
 import de.tu_berlin.dima.oligos.exception.TypeNotSupportedException;
 import de.tu_berlin.dima.oligos.exception.UnsupportedTypeException;
 import de.tu_berlin.dima.oligos.io.MyriadWriter;
@@ -172,48 +169,66 @@ public class Oligos {
   }
 
   public static ColumnProfiler<?> getProfilerOracle(final String schema, final  String table
-	      , final String column, final TypeInfo type, final JdbcConnector jdbcConnector
-	      , final MetaConnector metaConnector) throws SQLException {
-  	LOGGER.debug("entering Oligos->getProfilerOracle ...");
-	  ColumnProfiler<?> profiler = null;
-	  String typeName = type.getTypeName().toLowerCase();
-	  boolean isEnum = metaConnector.isEnumerated(schema, table, column);
-	  if (typeName.equals("number")) {
-	  	LOGGER.debug("column type is number with scale = " + type.getScale());
-		  Parser<BigDecimal> p = new BigDecimalParser();
-		  Operator<BigDecimal> op = new BigDecimalOperator();
-		  ColumnConnector<BigDecimal> connector = new OracleColumnConnector<BigDecimal>(
-		  										jdbcConnector, schema, table, column, BigDecimal.class, p); 
-		  profiler = new ColumnProfiler<BigDecimal>(schema, table, column, type, isEnum, connector, op, p);
-	  } 
-	  else if (typeName.equals("date") || typeName.equals("timestamp")) {
-	  		LOGGER.debug("column type is date");
-	  		Parser<Timestamp> p = new TimestampParser();
-	      Operator<Timestamp> op = new TimestampOperator();
-	      ColumnConnector<Timestamp> connector = new OracleColumnConnector<Timestamp>(jdbcConnector, schema, table, column, Date.class, p); 
-	    	profiler = new ColumnProfiler<Timestamp>(schema, table, column, type, isEnum, connector, op, p);
-	  } 
-	  // treat char as strings, due to Oracle's conversion to numbers no trimming is allowed
-	  else if (typeName.equals("varchar2") || typeName.equals("nvarchar2") || typeName.equals("char") || typeName.equals("nchar") ||
-	  		typeName.equals("varchar") || typeName.equals("nvarchar")) {
-	  		LOGGER.debug("column type is varchar2");
-	  		Parser<String> p = new StringParser();
-	  		//Operator<BigDecimal> op = new BigDecimalOperator();
-	  		Operator<String> op = new StringOperator();
-	    	ColumnConnector<String> connector = new OracleColumnConnector<String>(
-	    										jdbcConnector, schema, table, column, String.class, p, type);
-	    	Set<Constraint> constraints = connector.getConstraints();
-	    	if (constraints.contains(Constraint.UNIQUE) || constraints.contains(Constraint.PRIMARY_KEY))
-	    		throw new UnsupportedTypeException(typeName, Constraint.UNIQUE);
-	    	profiler = new PseudoColumnProfiler(schema, table, column, type, isEnum, connector);
-	    	//profiler = new ColumnProfiler<String>(schema, table, column, type, isEnum, connector, op, p);
-	  }
-	  else {
-	  	LOGGER.fatal("unsupported column type: " + typeName);
-	  }
-	  LOGGER.debug("leaving Oligos->getProfilerOracle");
-	  return profiler;
-	 
+          , final String column, final TypeInfo type, final JdbcConnector jdbcConnector
+          , final MetaConnector metaConnector) throws SQLException {
+    LOGGER.debug("entering Oligos->getProfilerOracle ...");
+    ColumnProfiler<?> profiler = null;
+    String typeName = type.getTypeName().toLowerCase();
+    boolean isEnum = metaConnector.isEnumerated(schema, table, column);
+    if (typeName.equals("number")) {
+      LOGGER.debug("column type is number with scale = " + type.getScale());
+      Parser<BigDecimal> p = new BigDecimalParser();
+      Operator<BigDecimal> op = new BigDecimalOperator();
+      ColumnConnector<BigDecimal> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
+      profiler = new ColumnProfiler<BigDecimal>(schema, table, column, type, isEnum, connector, op, p);
+    }
+    else if (typeName.equals("date")) {
+      LOGGER.debug("column type is date");
+      Parser<Date> p = new DateParser();
+      Operator<Date> op = new DateOperator();
+      ColumnConnector<Date> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
+      profiler = new ColumnProfiler<Date>(schema, table, column, type, isEnum, connector, op, p);
+    }
+    else if (typeName.equals("time")) {
+      LOGGER.debug("column type is time");
+      Parser<Time> p = new TimeParser();
+      Operator<Time> op = new TimeOperator();
+      ColumnConnector<Time> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
+      profiler = new ColumnProfiler<Time>(schema, table, column, type, isEnum, connector, op, p);
+    }
+    else if (typeName.equals("timestamp")) {
+      LOGGER.debug("column type is timestamp");
+      Parser<Timestamp> p = new TimestampParser();
+      Operator<Timestamp> op = new TimestampOperator();
+      ColumnConnector<Timestamp> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
+      profiler = new ColumnProfiler<Timestamp>(schema, table, column, type, isEnum, connector, op, p);
+    }
+    // treat char as strings, due to Oracle's conversion to numbers no trimming is allowed
+    else if (typeName.equals("varchar2") || typeName.equals("nvarchar2") || typeName.equals("char") || typeName.equals("nchar") ||
+            typeName.equals("varchar") || typeName.equals("nvarchar")) {
+      if (type.getLength() == 1) {
+        LOGGER.debug("column type is char(1)");
+        Parser<Character> p = new CharParser();
+        Operator<Character> op = new CharOperator();
+        ColumnConnector<Character> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
+        profiler = new ColumnProfiler<Character>(schema, table, column, type, isEnum, connector, op, p);
+      } else {
+        LOGGER.debug("column type is varchar2");
+        Parser<String> p = new StringParser();
+        Operator<String> op = new StringOperator();
+        ColumnConnector<String> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
+        Set<Constraint> constraints = connector.getConstraints();
+        if (constraints.contains(Constraint.UNIQUE) || constraints.contains(Constraint.PRIMARY_KEY))
+          throw new UnsupportedTypeException(typeName, Constraint.UNIQUE);
+        profiler = new PseudoColumnProfiler(schema, table, column, type, isEnum, connector);
+      }
+    }
+    else {
+      LOGGER.fatal("unsupported column type: " + typeName);
+    }
+    LOGGER.debug("leaving Oligos->getProfilerOracle");
+    return profiler;
+
   }
   
   public static void main(String[] args) throws TypeNotSupportedException {

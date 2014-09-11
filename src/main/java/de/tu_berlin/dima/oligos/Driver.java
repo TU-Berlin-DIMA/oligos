@@ -29,7 +29,7 @@ public class Driver {
 			this.JDBC_STRING = "jdbc:db2://%s:%d/%s";
 			break;
 		case oracle:
-			this.JDBC_STRING = "jdbc:oracle:thin:@%s:%d/%s";
+			this.JDBC_STRING = "jdbc:ora:thin:@%s:%d:%s";
 			break;
 		}
 	}

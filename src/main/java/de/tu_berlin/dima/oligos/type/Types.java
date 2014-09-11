@@ -24,6 +24,8 @@ import java.util.Map;
 
 import com.google.common.collect.Maps;
 
+import static oracle.jdbc.OracleTypes.*;
+
 public class Types {
 
   private final static Map<Class<?>, MyriadType> MYRIAD_TYPES = Maps.newHashMap();
@@ -40,12 +42,8 @@ public class Types {
       case java.sql.Types.LONGVARCHAR:
         result = String.class;
         break;
-      
-      
-     /* case oracle.jdbc.OracleTypes.NUMBER:
-        result = BigDecimal.class;
-        break;*/
-        
+
+      // TODO handle case where numeric or decimal but scale = 0 => integer type
       case java.sql.Types.NUMERIC:
       case java.sql.Types.DECIMAL:
         result = BigDecimal.class;
@@ -74,6 +72,7 @@ public class Types {
       case java.sql.Types.FLOAT:
       case java.sql.Types.REAL:
         result = Float.class;
+        break;
 
       case java.sql.Types.DOUBLE:
         result = Double.class;
