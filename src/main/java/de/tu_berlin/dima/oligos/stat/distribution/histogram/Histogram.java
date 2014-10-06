@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
+ * Copyright 2013 - 2014 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.stat.distribution.histogram;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.SortedSet;
 
@@ -46,7 +45,7 @@ public interface Histogram<T> extends Distribution<T>, Iterable<Bucket<T>> {
 
   public Histogram<T> getNonExactValues();
 
-  public SortedSet<T> getLowerBounds() throws SQLException;
+  public SortedSet<T> getLowerBounds();
 
   public SortedSet<T> getUpperBounds();
 

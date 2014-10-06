@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
+ * Copyright 2013 - 2014 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.type.util.operator;
 
-import java.sql.SQLException;
 import java.util.Comparator;
 
 public interface Operator<T> extends Comparator<T> {
@@ -26,9 +25,8 @@ public interface Operator<T> extends Comparator<T> {
    *  Value to increment
    * @return
    *  Incremented value
-   * @throws SQLException 
    */
-  public T increment(T value) throws SQLException;
+  public T increment(T value);
   
   /**
    * Decrements the given value by the minimum amount
@@ -36,9 +34,8 @@ public interface Operator<T> extends Comparator<T> {
    *  Value to decrement
    * @return
    *  Decremented value
-   * @throws SQLException 
    */
-  public T decrement(T value) throws SQLException;
+  public T decrement(T value);
   
   /**
    * Calculates the range between the given values. I.e. how many unique values
@@ -47,9 +44,8 @@ public interface Operator<T> extends Comparator<T> {
    * @param val2
    * @return
    *  Range between val1 and val2
-   * @throws SQLException 
    */
-  public long range(T val1, T val2) throws SQLException;
+  public long range(T val1, T val2);
   
   /**
    * Calculates the minimum of the given values

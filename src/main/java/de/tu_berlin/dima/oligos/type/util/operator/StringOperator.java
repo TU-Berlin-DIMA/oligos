@@ -1,6 +1,5 @@
 package de.tu_berlin.dima.oligos.type.util.operator;
 
-import java.sql.SQLException;
 import java.util.Arrays;
 
 public class StringOperator extends AbstractOperator<String>{
@@ -12,7 +11,7 @@ public class StringOperator extends AbstractOperator<String>{
 	 * @return	incremented String
 	 */
 	@Override
-	public String increment(String value) throws SQLException {
+	public String increment(String value) {
 		if (value.length() == 0 || value == null) return value;
 		char lastChar = value.charAt(value.length()-1);
 		int cp = String.valueOf(lastChar).codePointAt(0);
@@ -27,7 +26,7 @@ public class StringOperator extends AbstractOperator<String>{
 	 * @return	decremented String
 	 */
 	@Override
-	public String decrement(String value) throws SQLException {
+	public String decrement(String value) {
 		if (value.length() == 0 || value == null) return value;
 		char lastChar = value.charAt(value.length()-1);
 		int cp = String.valueOf(lastChar).codePointAt(0);

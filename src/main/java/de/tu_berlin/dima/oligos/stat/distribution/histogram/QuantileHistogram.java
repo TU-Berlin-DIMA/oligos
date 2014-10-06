@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
+ * Copyright 2013 - 2014 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.stat.distribution.histogram;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -92,7 +91,7 @@ public class QuantileHistogram<T> extends AbstractHistogram<T> {
     return total;
   }
   
-  public T getLowerBoundAt(int bucket) throws SQLException {
+  public T getLowerBoundAt(int bucket) {
     T lBound = min;
     int i = 0;
     Iterator<T> uBoundIter = buckets.keySet().iterator();
@@ -119,7 +118,7 @@ public class QuantileHistogram<T> extends AbstractHistogram<T> {
     return new ArrayList<Long>(buckets.values()).get(bucket);
   }
   
-  public SortedSet<T> getLowerBounds() throws SQLException {
+  public SortedSet<T> getLowerBounds() {
     SortedSet<T> lBounds = Sets.newTreeSet(getOperator());
     for (int i = 0; i < getNumberOfBuckets(); i++) {
       lBounds.add(getLowerBoundAt(i));
@@ -155,13 +154,8 @@ public class QuantileHistogram<T> extends AbstractHistogram<T> {
       @Override
       public Bucket<T> next() {
         Bucket<T> bucket = null;
-				try {
-					bucket = new Bucket<T>(getLowerBoundAt(index),
-					    getUpperBoundAt(index), getFrequencyAt(index));
-				} catch (SQLException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+        bucket = new Bucket<T>(getLowerBoundAt(index),
+                getUpperBoundAt(index), getFrequencyAt(index));
         index++;
         return bucket;
       }

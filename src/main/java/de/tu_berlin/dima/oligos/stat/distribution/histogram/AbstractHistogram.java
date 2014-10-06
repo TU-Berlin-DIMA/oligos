@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
+ * Copyright 2013 - 2014 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  ******************************************************************************/
 package de.tu_berlin.dima.oligos.stat.distribution.histogram;
 
-import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.SortedSet;
@@ -41,7 +40,7 @@ public abstract class AbstractHistogram<T> implements Histogram<T> {
   public abstract void add(T lowerBounds, T upperBound, long frequency);
 
   @Override
-  public abstract T getMin() throws SQLException;
+  public abstract T getMin();
 
   @Override
   public abstract T getMax();
@@ -56,7 +55,7 @@ public abstract class AbstractHistogram<T> implements Histogram<T> {
   public abstract long getTotalNumberOfValues();
 
   @Override
-  public long getCardinality() throws SQLException {
+  public long getCardinality() {
     T min = getMin();
     T max = getMax();
     return operator.range(min, max);
@@ -110,7 +109,7 @@ public abstract class AbstractHistogram<T> implements Histogram<T> {
   }
 
   @Override
-  public abstract SortedSet<T> getLowerBounds() throws SQLException;
+  public abstract SortedSet<T> getLowerBounds();
 
   @Override
   public abstract SortedSet<T> getUpperBounds();

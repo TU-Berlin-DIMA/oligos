@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
+ * Copyright 2013 - 2014 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ public class StringHistogram implements Histogram<String> {
 
   @Override
   public long getCardinality() {
-    throw new UnsupportedOperationException();
+    return exactValues.keySet().size();
   }
 
   @Override
