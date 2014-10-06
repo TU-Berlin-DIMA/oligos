@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
+ * Copyright 2013 - 2014 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,7 +69,6 @@ public class DistributionWriter implements Writer {
   }
 
   public String getDistributionString() throws SQLException {
-  	LOGGER.debug("entering DistributionWriter:getDistributionString ...");
     Class<?> type = column.getTypeInfo().getType();
     StringBuilder strBld = new StringBuilder();
     boolean isEnum = column.isEnumerated();
@@ -88,7 +87,7 @@ public class DistributionWriter implements Writer {
       double probability = exactBucket.getFrequency() / (double) numTotal;
       String value = column.asString(exactBucket.getLowerBound());
       if (isEnum) {
-      	strBld.append(getExactEntry(probability, value, index++));
+        strBld.append(getExactEntry(probability, value, index++));
       } else {
         if (QUOTED_TYPE.contains(type)) {
           value = "\'" + value + "\'";
@@ -109,7 +108,6 @@ public class DistributionWriter implements Writer {
         strBld.append('\n');
       }
     }
-    LOGGER.debug("leaving DistributionWriter:getDistributionString");
     return strBld.toString();
   }
 

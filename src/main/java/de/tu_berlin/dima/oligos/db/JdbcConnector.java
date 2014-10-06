@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
+ * Copyright 2013 - 2014 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -238,22 +238,21 @@ public class JdbcConnector {
    */
   @Deprecated
   public Set<Quartet<String, String, String, String>> getReferences(final String schema) throws SQLException{
-    LOGGER.error("JdbcConnector:getReferences deprecated!");
     Set<Quartet<String, String, String, String>> references = Sets.newHashSet();
-	  ResultSet result;
-	  Collection<String> tables = this.getTables(schema);
-	  for (String table: tables){
-		  result = this.metaData.getExportedKeys(null, schema, table);
-		  while (result.next()){
-			  Quartet<String, String, String, String> ri = new Quartet<String, String, String, String>(	
-				  	result.getString("PKTABLE_NAME"), 
-			  		result.getString("PKCOLUMN_NAME"),
-			  		result.getString("FKTABLE_NAME"), 
-			  		result.getString("FKCOLUMN_NAME"));
-			  references.add(ri);
-		  }
-	  }
-	  return references;
+    ResultSet result;
+    Collection<String> tables = this.getTables(schema);
+    for (String table: tables){
+      result = this.metaData.getExportedKeys(null, schema, table);
+      while (result.next()){
+        Quartet<String, String, String, String> ri = new Quartet<String, String, String, String>(
+                result.getString("PKTABLE_NAME"),
+                result.getString("PKCOLUMN_NAME"),
+                result.getString("FKTABLE_NAME"),
+                result.getString("FKCOLUMN_NAME"));
+        references.add(ri);
+      }
+    }
+    return references;
   }
 
   /**
@@ -576,48 +575,7 @@ public class JdbcConnector {
     QueryRunner runner = new QueryRunner(true);
     return runner.query(connection, query, handler, parameters);
   }
-  
-  /*
-   *  Execute SQL commands with no return values, like registeration of 
-   *  procedures.
-   *  
-   *  @param 	query				the query string
-   *  @param 	parameters	optional parameters for the query string
-   *  @return void
-   */
-  @SuppressWarnings({ "rawtypes", "unchecked" })
-  public void execSQLCommand(
-	      final String query,
-	      final Object... parameters) throws SQLException {
-  	ResultSetHandler handler = new ScalarHandler();
-  	QueryRunner runner = new QueryRunner();
-  	runner.query(connection, query, handler, parameters);	
-  }
-  // TODO allow grouping transactions
-  
-  /* execute prepared statement */
-  public void execPreparedStmt(final String stmt, final Object... parameters) throws SQLException{
-  	PreparedStatement ps = null;
-  	try{
-  		ps = connection.prepareStatement(stmt);	
-  		for (int i = 1; i <= parameters.length; i++) {
-  	    ps.setString(i, (String) parameters[i-1]);
-      }
-  		ps.executeUpdate();
-  		connection.commit();
-  		
-  	}
-  	catch(SQLException e){
-  		e.printStackTrace();
-  	}
-  	finally{
-  		if (ps != null){
-  			ps.close();
-    	}
-  	}
-  }
-  
-  
+
   public Map<String, Object> mapQuery(
       final String query,
       final Object... parameters) throws SQLException {

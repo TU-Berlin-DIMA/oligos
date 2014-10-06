@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
+ * Copyright 2013 - 2014 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,6 +52,7 @@ import org.apache.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.*;
 import java.util.Map;
 import java.util.Properties;
@@ -75,9 +76,8 @@ public class Oligos {
       , final String column, final TypeInfo type, final JdbcConnector jdbcConnector
       , final MetaConnector metaConnector)
       throws SQLException {
-  	
-  	ColumnProfiler<?> profiler = null;
-  	LOGGER.trace("type = " + type.toString());
+    ColumnProfiler<?> profiler = null;
+    LOGGER.trace("type = " + type.toString());
     String typeName = type.getTypeName().toLowerCase();
     boolean isEnum = metaConnector.isEnumerated(schema, table, column);
     if (typeName.equals("smallint")) {
@@ -171,33 +171,35 @@ public class Oligos {
   public static ColumnProfiler<?> getProfilerOracle(final String schema, final  String table
           , final String column, final TypeInfo type, final JdbcConnector jdbcConnector
           , final MetaConnector metaConnector) throws SQLException {
-    LOGGER.debug("entering Oligos->getProfilerOracle ...");
     ColumnProfiler<?> profiler = null;
     String typeName = type.getTypeName().toLowerCase();
     boolean isEnum = metaConnector.isEnumerated(schema, table, column);
     if (typeName.equals("number")) {
-      LOGGER.debug("column type is number with scale = " + type.getScale());
-      Parser<BigDecimal> p = new BigDecimalParser();
-      Operator<BigDecimal> op = new BigDecimalOperator();
-      ColumnConnector<BigDecimal> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
-      profiler = new ColumnProfiler<BigDecimal>(schema, table, column, type, isEnum, connector, op, p);
+      if (type.getScale() == 0) {
+        Parser<BigInteger> p = new BigIntegerParser();
+        Operator<BigInteger> op = new BigIntegerOperator();
+        ColumnConnector<BigInteger> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
+        profiler = new ColumnProfiler<BigInteger>(schema, table, column, type, isEnum, connector, op, p);
+      } else {
+        Parser<BigDecimal> p = new BigDecimalParser();
+        Operator<BigDecimal> op = new BigDecimalOperator();
+        ColumnConnector<BigDecimal> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
+        profiler = new ColumnProfiler<BigDecimal>(schema, table, column, type, isEnum, connector, op, p);
+      }
     }
     else if (typeName.equals("date")) {
-      LOGGER.debug("column type is date");
       Parser<Date> p = new DateParser();
       Operator<Date> op = new DateOperator();
       ColumnConnector<Date> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
       profiler = new ColumnProfiler<Date>(schema, table, column, type, isEnum, connector, op, p);
     }
     else if (typeName.equals("time")) {
-      LOGGER.debug("column type is time");
       Parser<Time> p = new TimeParser();
       Operator<Time> op = new TimeOperator();
       ColumnConnector<Time> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
       profiler = new ColumnProfiler<Time>(schema, table, column, type, isEnum, connector, op, p);
     }
     else if (typeName.equals("timestamp")) {
-      LOGGER.debug("column type is timestamp");
       Parser<Timestamp> p = new TimestampParser();
       Operator<Timestamp> op = new TimestampOperator();
       ColumnConnector<Timestamp> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
@@ -207,13 +209,11 @@ public class Oligos {
     else if (typeName.equals("varchar2") || typeName.equals("nvarchar2") || typeName.equals("char") || typeName.equals("nchar") ||
             typeName.equals("varchar") || typeName.equals("nvarchar")) {
       if (type.getLength() == 1) {
-        LOGGER.debug("column type is char(1)");
         Parser<Character> p = new CharParser();
         Operator<Character> op = new CharOperator();
         ColumnConnector<Character> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
         profiler = new ColumnProfiler<Character>(schema, table, column, type, isEnum, connector, op, p);
       } else {
-        LOGGER.debug("column type is varchar2");
         Parser<String> p = new StringParser();
         Operator<String> op = new StringOperator();
         ColumnConnector<String> connector = new OracleColumnConnector<>(jdbcConnector, schema, table, column, p);
@@ -226,17 +226,16 @@ public class Oligos {
     else {
       LOGGER.fatal("unsupported column type: " + typeName);
     }
-    LOGGER.debug("leaving Oligos->getProfilerOracle");
     return profiler;
 
   }
   
   public static void main(String[] args) throws TypeNotSupportedException {
-  	BasicConfigurator.configure();
-  
-  	// TODO create cmdline option for setting logger level 
-    LOGGER.setLevel(Level.ALL);
-  	CommandLineInterface cli = new CommandLineInterface(args);
+    BasicConfigurator.configure();
+
+    // TODO create cmdline option for setting logger level
+    Logger.getRootLogger().setLevel(Level.ALL);
+    CommandLineInterface cli = new CommandLineInterface(args);
     try {
       // TODO hard exit if the parsing fails!
       // better catch exceptions and log them
@@ -252,15 +251,15 @@ public class Oligos {
       MetaConnector metaConnector = null;
       Driver dbDriver = cli.dbDriver;
       switch (dbDriver.driverName){
-	  		case db2:
-	  			LOGGER.trace("metaConnector = Db2MetaConnector");
-	  			metaConnector = new Db2MetaConnector(jdbcConnector);
-	  			break;
-	  		case oracle:
-	  			metaConnector = new OracleMetaConnector(jdbcConnector);
-	  			break;
-	  		default:
-	  			LOGGER.error("Unknown database driver (see Driver.java for known drivers)");
+        case db2:
+          LOGGER.trace("metaConnector = Db2MetaConnector");
+          metaConnector = new Db2MetaConnector(jdbcConnector);
+          break;
+        case oracle:
+          metaConnector = new OracleMetaConnector(jdbcConnector);
+          break;
+        default:
+          LOGGER.error("Unknown database driver. Supported drivers are: " + DriverName.values());
       }
       
       // validating schema
@@ -269,7 +268,7 @@ public class Oligos {
       LOGGER.trace("User specified schema " + sparseSchema);
       DenseSchema inputSchema = DbUtils.populateSchema(sparseSchema, jdbcConnector, metaConnector);
       LOGGER.trace("Populated and validated schema " + inputSchema);
-      
+
       // obtaining type information/ column meta data
       LOGGER.info("Retrieving column meta data ...");
       Map<ColumnId, TypeInfo> columnTypes = Maps.newLinkedHashMap();
@@ -277,19 +276,19 @@ public class Oligos {
       	TypeInfo type = metaConnector.getColumnType(columnId);
         columnTypes.put(columnId, type);
       }
-      
-    	// creating connectors and profilers
+
+      // creating connectors and profilers
       LOGGER.info("Establashing database connection ...");
       SchemaConnector schemaConnector = null;
       TableConnector tableConnector = null;
       switch(dbDriver.driverName){
-      case db2:
-    	   schemaConnector = new Db2SchemaConnector(jdbcConnector);
-    	   tableConnector = new Db2TableConnector(jdbcConnector);
-    	   break;
-      case oracle:
-    	   schemaConnector = new OracleSchemaConnector(jdbcConnector);
-    	   tableConnector = new OracleTableConnector(jdbcConnector);
+        case db2:
+          schemaConnector = new Db2SchemaConnector(jdbcConnector);
+          tableConnector = new Db2TableConnector(jdbcConnector);
+          break;
+        case oracle:
+          schemaConnector = new OracleSchemaConnector(jdbcConnector);
+          tableConnector = new OracleTableConnector(jdbcConnector);
       }
       Set<SchemaProfiler> profilers = Sets.newLinkedHashSet();
       for (String schema : inputSchema.schemas()) {
@@ -325,12 +324,12 @@ public class Oligos {
       LOGGER.info("Generating generator specification ...");
       File outputDir = cli.getOutputDirectory();
       String generatorName = cli.getGeneratorName();
-      LOGGER.debug("Writing generator specification ...");
+      LOGGER.info("Writing generator specification ...");
       for (Schema schema : profiledSchemas) {
         MyriadWriter writer = new MyriadWriter(schema, outputDir, generatorName);
         writer.write();
       }
-      LOGGER.debug("Close JdbcConnector ...");
+      LOGGER.info("Closing database connection ...");
       connection.close();
     } catch (SQLException e) {
       LOGGER.error(e.getLocalizedMessage());
