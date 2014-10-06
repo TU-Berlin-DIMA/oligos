@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
+ * Copyright 2013 - 2014 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -129,13 +129,23 @@ public class Column<T> {
       return true;
     }
   }
-  
-  public boolean isUnique() {
+
+  /**
+   * Checks whether the column has a constraint that implies uniqueness.
+   * <br />
+   * For instance primary key columns or columns with the <code>UNIQUE</code> constraint.
+   * @return True if column is enforced to be unique, false otherwise.
+   */
+  public boolean isUniqueHard() {
     if (constraints.contains(Constraint.PRIMARY_KEY) || constraints.contains(Constraint.UNIQUE)) {
       return true;
     } else {
       return false;
     }
+  }
+
+  public boolean isUniqueSoft() {
+    return distribution.getTotalNumberOfValues() <= distribution.getCardinality();
   }
   
   public boolean hasDistribution() {

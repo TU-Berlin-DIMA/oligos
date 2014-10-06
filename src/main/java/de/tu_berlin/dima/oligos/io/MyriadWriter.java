@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
+ * Copyright 2013 - 2014 DIMA Research Group, TU Berlin (http://www.dima.tu-berlin.de)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,6 @@ import de.tu_berlin.dima.oligos.stat.Table;
 import de.tu_berlin.dima.oligos.type.MyriadType;
 import de.tu_berlin.dima.oligos.type.Types;
 import de.tu_berlin.dima.oligos.type.util.ColumnId;
-import de.tu_berlin.dima.oligos.type.util.Constraint;
 
 public class MyriadWriter implements Writer {
   
@@ -123,7 +122,7 @@ public class MyriadWriter implements Writer {
           Element refSetter = createReferenceSetter(column);
           setterChain.appendChild(refSetter);
         }
-        Element setter = createSetter(column);
+        Element setter = createSetter(column, table);
         setterChain.appendChild(setter);
       }
     }
@@ -178,7 +177,7 @@ public class MyriadWriter implements Writer {
     String funcName = getFunctionKey(columnId);
     String funcType = "";
     String colType = getMyriadType(column).getTypeName();
-    if (column.isUnique()) {
+    if (column.isUniqueHard()) {
       funcType = "uniform_probability[" + colType + "]";
       String min = column.getMin().toString();
       String max = "${%" + columnId.getTable().toLowerCase() + ".sequence.cardinality% + " + min + "}";
@@ -296,7 +295,7 @@ public class MyriadWriter implements Writer {
     return setter;
   }
   
-  private Element createSetter(Column<?> column) {
+  private Element createSetter(Column<?> column, Table table) {
     ColumnId columnId = column.getId();
     Element setter = createElement(Tag.Setter);
     setter.setAttribute("key", getSetterKey(columnId));
@@ -312,11 +311,11 @@ public class MyriadWriter implements Writer {
     // <attribute key="value" type="<TYPE>" value="NULL" />
     // if (column.getMin() == Null || column.getMax() == Null)
 
-    // create clustered value provider for all key columns
-    // TODO unique columns too
+    // create clustered value provider for all unique columns (PRIMARY KEY or UNIQUE constraints), as well as
+    // for enumerated columns
     // FIXME one single attribute constraints, NO MULTIATTRIBUTE CONSTRAINTS
     // ARE SUPPORTED
-    else if (column.getConstraints().contains(Constraint.PRIMARY_KEY)) {
+    else if (column.isUniqueHard() || (column.getCardinality() >= table.getCardinality())) {
       Element clusteredValueProvider = createClusteredValueProvider(column);
       setter.appendChild(clusteredValueProvider);
     }
