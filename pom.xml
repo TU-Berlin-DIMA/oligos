@@ -15,13 +15,13 @@
 
   <dependencies>
       <!-- FIXME temporary hack to build oligos locally -->
-      <dependency>
-          <groupId>com.oracle</groupId>
-          <artifactId>ora-jdbc</artifactId>
-          <version>7.0.0</version>
-          <scope>system</scope>
-          <systemPath>/Users/carabolic/Abgelegt/oracle/ojdbc7_g.jar</systemPath>
-      </dependency>
+    <dependency>
+      <groupId>com.oracle</groupId>
+      <artifactId>ora-jdbc</artifactId>
+      <version>7.0.0</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/lib/ojdbc7_g.jar</systemPath>
+    </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
