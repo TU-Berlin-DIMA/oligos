@@ -115,7 +115,6 @@ public class ForeignKeysHandler implements ResultSetHandler<Set<ForeignKey>> {
     isPart = seq > 1;
     ForeignKey foreignKey =
         new ForeignKey("", childTable, childColumns, parentTable, parentColumns);
-    LOGGER.debug("Found foreign key: " + foreignKey);
     return foreignKey;
   }
 

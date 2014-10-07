@@ -234,7 +234,7 @@ public class Oligos {
     BasicConfigurator.configure();
 
     // TODO create cmdline option for setting logger level
-    Logger.getRootLogger().setLevel(Level.WARN);
+    Logger.getRootLogger().setLevel(Level.INFO);
     CommandLineInterface cli = new CommandLineInterface(args);
     try {
       // TODO hard exit if the parsing fails!
