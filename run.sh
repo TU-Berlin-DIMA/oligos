@@ -1,26 +1,28 @@
 #!/bin/bash
 # Path to oligos jar
-OLIGOS=target/oligos-0.3-jar-with-dependencies.jar
-# Host where DB2 is running
+OLIGOS=target/oligos-0.3.1-jar-with-dependencies.jar
+# Host where the database is running (default=localhost)
 HOST="localhost"
-# DB2 port (default=60000)
-PORT=60004
-# DB2 username (default=db2inst1)
-USER="db2inst2"
+# database port (default=60000)
+PORT=60000
+# database username (default=db2inst1)
+USER="db2inst1"
 # Name of the database (default=sampledb)
-DB="TPCH"
+DB="sampledb"
 # Output directory for the Myriad files (default=/tmp/oligos)
 OUT="/tmp/oligos"
 # Name of the Myriad generator (default=example-gen)
 NAME="example-gen"
 
-if [ "$#" -ne 2 ]; then
+if [ "$#" -ne 3 ]; then
     echo "Usage:"
-    echo "./run.sh <PATH TO JDBC DRIVER> <SCHEMA>"
+    echo "./run.sh <oracle|db2> <PATH TO JDBC DRIVER> <SCHEMA>"
     exit 1
 fi
 
-JDBC=$1
-SCHEMA=$2
+VENDOR=$1
+JDBC=$2
+SCHEMA=$3
 read -s -p "Password: " PASS
-java -cp $OLIGOS:$JDBC de.tu_berlin.dima.oligos.Oligos -h $HOST -P $PORT -u $USER -p $PASS -D $DB -o $OUT -g $NAME $SCHEMA
+echo ""
+java -cp $OLIGOS:$JDBC de.tu_berlin.dima.oligos.Oligos -j $VENDOR -h $HOST -P $PORT -u $USER -p $PASS -D $DB -o $OUT -g $NAME $SCHEMA
